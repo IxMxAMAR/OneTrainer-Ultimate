@@ -74,25 +74,42 @@
           <div class="form-group">
             <label>Model Architecture</label>
             <select id="model_type" data-bind="model_type">
-              <option value="STABLE_DIFFUSION_XL_10_BASE">Stable Diffusion XL 1.0 (SDXL)</option>
-              <option value="FLUX_1_DEV">FLUX.1 [dev] (Flow-Matching 12B)</option>
-              <option value="FLUX_1_SCHNELL">FLUX.1 [schnell] (4-step 12B)</option>
-              <option value="FLUX_2_DEV">FLUX.2 [dev]</option>
-              <option value="STABLE_DIFFUSION_15">Stable Diffusion 1.5</option>
-              <option value="STABLE_DIFFUSION_3">Stable Diffusion 3 / 3.5 Large</option>
-              <option value="SANA">Sana (1.6B Linear Attention)</option>
-              <option value="HUNYUAN_VIDEO">HunyuanVideo</option>
-              <option value="PIXART_SIGMA">PixArt-Sigma</option>
-              <option value="PIXART_ALPHA">PixArt-Alpha</option>
-              <option value="CHROMA">Chroma</option>
-              <option value="STABLE_CASCADE">Stable Cascade</option>
-              <option value="QWEN_IMAGE">Qwen-Image</option>
+              <optgroup label="Diffusion Transformers (DiT & Flow Matching)">
+                <option value="KREA_2">Krea 2</option>
+                <option value="FLUX_DEV_1">FLUX.1 [dev] (12B Flow-Match)</option>
+                <option value="FLUX_1_SCHNELL">FLUX.1 [schnell] (4-step 12B)</option>
+                <option value="FLUX_FILL_DEV_1">FLUX.1 Fill [dev]</option>
+                <option value="FLUX_2">FLUX.2</option>
+                <option value="SANA">Sana (1.6B Linear Attention)</option>
+                <option value="QWEN">Qwen-Image</option>
+                <option value="ANIMA">Anima</option>
+                <option value="Z_IMAGE">Z-Image</option>
+                <option value="HUNYUAN_VIDEO">HunyuanVideo</option>
+                <option value="HI_DREAM_FULL">HiDream Full</option>
+                <option value="CHROMA_1">Chroma</option>
+                <option value="ERNIE">Ernie Image</option>
+                <option value="IDEOGRAM_4">Ideogram 4</option>
+                <option value="PIXART_SIGMA">PixArt-Sigma</option>
+                <option value="PIXART_ALPHA">PixArt-Alpha</option>
+              </optgroup>
+              <optgroup label="Stable Diffusion Family">
+                <option value="STABLE_DIFFUSION_XL_10_BASE">Stable Diffusion XL 1.0 (SDXL)</option>
+                <option value="STABLE_DIFFUSION_XL_10_BASE_INPAINTING">SDXL 1.0 Inpainting</option>
+                <option value="STABLE_DIFFUSION_3">Stable Diffusion 3</option>
+                <option value="STABLE_DIFFUSION_35">Stable Diffusion 3.5 Large</option>
+                <option value="STABLE_DIFFUSION_15">Stable Diffusion 1.5</option>
+                <option value="STABLE_DIFFUSION_15_INPAINTING">Stable Diffusion 1.5 Inpainting</option>
+                <option value="STABLE_DIFFUSION_21">Stable Diffusion 2.1</option>
+                <option value="STABLE_DIFFUSION_20">Stable Diffusion 2.0</option>
+                <option value="STABLE_CASCADE_1">Stable Cascade</option>
+                <option value="WUERSTCHEN_2">Wuerstchen v2</option>
+              </optgroup>
             </select>
           </div>
 
           <div class="form-group">
             <label>Base Model Path or Hugging Face Repo ID</label>
-            <input type="text" id="base_model_name" data-bind="base_model_name" placeholder="e.g. stabilityai/stable-diffusion-xl-base-1.0 or black-forest-labs/FLUX.1-dev" />
+            <input type="text" id="base_model_name" data-bind="base_model_name" placeholder="e.g. krea/Krea-2-Raw or stabilityai/stable-diffusion-xl-base-1.0 or black-forest-labs/FLUX.1-dev" />
             <small class="help-text">Auto-downloads directly from Hugging Face Hub if a repository name is given.</small>
           </div>
 
@@ -119,20 +136,45 @@
           <div class="card-title">Precision & Component Weights Dtypes</div>
           <div class="form-row">
             <div class="form-group flex-1">
-              <label>Transformer / UNet Weight Dtype</label>
-              <select id="unet_dtype" data-bind="unet.weight_dtype">
+              <label>Transformer Weight Dtype</label>
+              <select id="transformer_dtype" data-bind="transformer.weight_dtype">
+                <option value="INT_W8A8">int W8A8 (Recommended for Krea 2 / Low VRAM)</option>
+                <option value="FLOAT_W8A8">float W8A8</option>
+                <option value="BFLOAT_16">bfloat16</option>
                 <option value="FLOAT_16">float16</option>
-                <option value="BFLOAT_16">bfloat16 (Recommended for Flux/SDXL)</option>
-                <option value="FLOAT_8">float8 (W8/FP8 - Low VRAM)</option>
-                <option value="FLOAT_32">float32 (Full precision)</option>
-                <option value="NFLOAT_4">nfloat4 (NF4 Quantized)</option>
+                <option value="FLOAT_8">float8 (W8)</option>
+                <option value="FLOAT_32">float32</option>
+                <option value="NFLOAT_4">nfloat4</option>
               </select>
             </div>
             <div class="form-group flex-1">
+              <label>UNet Weight Dtype</label>
+              <select id="unet_dtype" data-bind="unet.weight_dtype">
+                <option value="FLOAT_16">float16</option>
+                <option value="BFLOAT_16">bfloat16 (Recommended for SDXL)</option>
+                <option value="FLOAT_8">float8 (W8/FP8)</option>
+                <option value="FLOAT_32">float32</option>
+                <option value="NFLOAT_4">nfloat4</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
               <label>Text Encoder Weight Dtype</label>
               <select id="te_dtype" data-bind="text_encoder.weight_dtype">
+                <option value="FLOAT_8">float8 (FP8 - Low VRAM)</option>
                 <option value="FLOAT_16">float16</option>
                 <option value="BFLOAT_16">bfloat16</option>
+                <option value="FLOAT_32">float32</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label>Text Encoder 2 (T5 / CLIP-G) Dtype</label>
+              <select id="te2_dtype" data-bind="text_encoder_2.weight_dtype">
+                <option value="BFLOAT_16">bfloat16</option>
+                <option value="FLOAT_8">float8 (T5 FP8 - Save 5GB+ VRAM)</option>
+                <option value="FLOAT_16">float16</option>
                 <option value="FLOAT_32">float32</option>
               </select>
             </div>
@@ -140,21 +182,16 @@
 
           <div class="form-row">
             <div class="form-group flex-1">
-              <label>Text Encoder 2 (T5 / CLIP-G) Dtype</label>
-              <select id="te2_dtype" data-bind="text_encoder_2.weight_dtype">
-                <option value="FLOAT_16">float16</option>
-                <option value="BFLOAT_16">bfloat16 (T5)</option>
-                <option value="FLOAT_8">float8 (T5 FP8 - Save 5GB+ VRAM)</option>
-                <option value="FLOAT_32">float32</option>
-              </select>
-            </div>
-            <div class="form-group flex-1">
               <label>VAE Weight Dtype</label>
               <select id="vae_dtype" data-bind="vae.weight_dtype">
                 <option value="FLOAT_32">float32 (Recommended for VAE)</option>
                 <option value="BFLOAT_16">bfloat16</option>
                 <option value="FLOAT_16">float16</option>
               </select>
+            </div>
+            <div class="form-group flex-1">
+              <label>Transformer Offload Fraction (0.0 to 1.0)</label>
+              <input type="number" step="0.05" id="transformer_offload" data-bind="transformer.offload_fraction" placeholder="0.3" />
             </div>
           </div>
 
@@ -167,9 +204,11 @@
             <div class="form-group flex-1">
               <label>Output Format</label>
               <select id="output_model_format" data-bind="output_model_format">
-                <option value="KOHYA_LORA">Kohya LoRA (Standard)</option>
+                <option value="DIFFUSERS_LORA">Diffusers LoRA (Standard for Krea 2 / Flux)</option>
+                <option value="KOHYA_LORA">Kohya LoRA (Standard for SDXL / SD 1.5)</option>
                 <option value="DIFFUSERS">Diffusers Format</option>
                 <option value="STANDARD">Standard Weights</option>
+                <option value="ORIGINAL_TRANSFORMER">Original Transformer</option>
               </select>
             </div>
           </div>
@@ -282,9 +321,9 @@
             <div class="form-group flex-1">
               <label>Timestep Distribution</label>
               <select id="timestep_distribution" data-bind="timestep_distribution">
+                <option value="LOGIT_NORMAL">Logit-Normal (Krea 2 / Flux Standard)</option>
                 <option value="UNIFORM">Uniform</option>
                 <option value="SIGMOID">Sigmoid (Focus Mid-steps)</option>
-                <option value="LOGIT_NORMAL">Logit-Normal (Flux Standard)</option>
               </select>
             </div>
             <div class="form-group flex-1">
