@@ -39,7 +39,7 @@ try:
 except ImportError:
     snapshot_download = None
 
-app = FastAPI(title="OneTrainer WebUI", version="1.1.0")
+app = FastAPI(title="OneTrainer WebUI", version="1.1.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -62,6 +62,12 @@ POPULAR_DOWNLOAD_TARGETS = [
     {"id": "sana-1600m", "name": "Sana 1.6B", "repo": "Efficient-Large-Model/Sana_1600M_1024px", "size": "3.5 GB", "type": "SANA"},
     {"id": "hunyuan-video", "name": "HunyuanVideo", "repo": "tencent/HunyuanVideo", "size": "26 GB", "type": "HUNYUAN_VIDEO"},
 ]
+
+
+def parse_train_config(data: Dict[str, Any]) -> TrainConfig:
+    default_cfg = TrainConfig.default_values()
+    is_built_in = "__version" not in data
+    return default_cfg.from_dict(data, migrate=not is_built_in).to_unpacked_config()
 
 
 class DownloadManager:
@@ -230,7 +236,7 @@ async def update_current_config(config_data: Dict[str, Any]):
                 else:
                     d[k] = v
         update_deep(current_dict, config_data)
-        state.config = TrainConfig.from_dict(current_dict)
+        state.config = parse_train_config(current_dict)
         return {"status": "ok", "config": state.config.to_pack_dict(secrets=True)}
     except Exception as e:
         traceback.print_exc()
@@ -274,7 +280,6 @@ async def auto_detect_datasets(payload: Dict[str, Any]):
     detected_concepts = []
 
     if os.path.exists(base_dir):
-        # Look for subdirectories or root directory
         subdirs = [os.path.join(base_dir, d) for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))]
         if not subdirs:
             subdirs = [base_dir]
@@ -364,7 +369,7 @@ async def autotune_vram(payload: Dict[str, Any]):
         if "text_encoder_2" in current:
             current["text_encoder_2"]["weight_dtype"] = "BFLOAT_16"
 
-    state.config = TrainConfig.from_dict(current)
+    state.config = parse_train_config(current)
     state.log(f"Auto-tuned hyperparameters for {target_gb}GB VRAM profile")
     return {"status": "ok", "config": state.config.to_pack_dict(secrets=True)}
 
@@ -393,7 +398,7 @@ async def load_preset(category: str, filename: str):
     try:
         with open(preset_file, "r", encoding="utf-8") as f:
             data = json.load(f)
-        state.config = TrainConfig.from_dict(data)
+        state.config = parse_train_config(data)
         state.log(f"Loaded preset: {category}/{filename}")
         return {"status": "ok", "config": state.config.to_pack_dict(secrets=True)}
     except Exception as e:
@@ -445,7 +450,7 @@ async def load_config_file(payload: Dict[str, Any]):
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        state.config = TrainConfig.from_dict(data)
+        state.config = parse_train_config(data)
         state.log(f"Loaded configuration from {file_path}")
         return {"status": "ok", "config": state.config.to_pack_dict(secrets=True)}
     except Exception as e:
