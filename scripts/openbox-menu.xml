@@ -14,6 +14,10 @@
       <action name="Execute"><command>/opt/scripts/launch_onetrainer_ctk.sh</command></action>
     </item>
     <separator />
+    <item label="Download Model Presets (CLI)">
+      <action name="Execute"><command>xterm -bg black -fg cyan -title 'Model Downloader' -hold -e python /opt/scripts/download_model.py --list</command></action>
+    </item>
+    <separator />
     <item label="Terminal (xterm)">
       <action name="Execute"><command>xterm -bg black -fg white -fa 'Monospace' -fs 11</command></action>
     </item>

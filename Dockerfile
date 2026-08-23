@@ -15,6 +15,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     MPLBACKEND=Agg \
     HF_HUB_DISABLE_TELEMETRY=1 \
+    HF_HUB_ENABLE_HF_TRANSFER=1 \
     QT_QPA_PLATFORM=xcb \
     QT_X11_NO_MITSHM=1 \
     DISPLAY=:1 \
@@ -59,7 +60,7 @@ RUN pip install torch==2.8.0+cu128 torchvision==0.23.0+cu128 torchaudio==2.8.0+c
 
 # ---- 4. Attention Backends (FlashAttention-2 & SageAttention) ----
 COPY scripts/ /opt/scripts/
-RUN chmod +x /opt/scripts/*.sh
+RUN chmod +x /opt/scripts/*.sh /opt/scripts/*.py
 
 RUN pip install --no-cache-dir \
       "https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.3.post1/flash_attn-2.8.3.post1%2Bcu12torch2.8cxx11abiTRUE-cp312-cp312-linux_x86_64.whl" \
@@ -88,7 +89,7 @@ RUN bash -c '\
 # ---- 5. Pre-bake Core ML Ecosystem & Optimizers ----
 RUN uv pip install --no-cache \
       numpy scipy matplotlib pillow \
-      transformers tokenizers huggingface-hub accelerate safetensors peft \
+      transformers tokenizers huggingface-hub hf_transfer accelerate safetensors peft \
       sentencepiece open-clip-torch gguf onnxruntime-gpu \
       bitsandbytes dadaptation lion-pytorch prodigyopt schedulefree \
       pytorch_optimizer prodigy-plus-schedule-free adv_optm \

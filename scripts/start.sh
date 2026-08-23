@@ -13,6 +13,10 @@ export QT_QPA_PLATFORM="xcb"
 export QT_X11_NO_MITSHM="1"
 export XDG_RUNTIME_DIR="/tmp/runtime-root"
 
+# Hugging Face cache persistence and high-speed transfer
+export HF_HOME="${HF_HOME:-/workspace/.cache/huggingface}"
+export HF_HUB_ENABLE_HF_TRANSFER="1"
+
 mkdir -p "$XDG_RUNTIME_DIR"
 chmod 700 "$XDG_RUNTIME_DIR"
 
@@ -26,7 +30,12 @@ mkdir -p "$WORKSPACE/models" \
          "$WORKSPACE/logs" \
          "$WORKSPACE/training_configs" \
          "$WORKSPACE/training_presets" \
-         "$WORKSPACE/embedding_templates"
+         "$WORKSPACE/embedding_templates" \
+         "$WORKSPACE/.cache/huggingface"
+
+# Wire HuggingFace cache
+mkdir -p /root/.cache
+ln -sfn "$WORKSPACE/.cache/huggingface" /root/.cache/huggingface
 
 # Populate initial templates and configs into workspace if not already present
 for dir in training_configs training_presets embedding_templates; do
