@@ -34,7 +34,12 @@ from modules.util.TrainProgress import TrainProgress
 from modules.util.torch_util import torch_gc
 import torch
 
-app = FastAPI(title="OneTrainer WebUI", version="1.0.0")
+try:
+    from huggingface_hub import snapshot_download
+except ImportError:
+    snapshot_download = None
+
+app = FastAPI(title="OneTrainer WebUI", version="1.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,6 +51,57 @@ app.add_middleware(
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+POPULAR_DOWNLOAD_TARGETS = [
+    {"id": "krea-2", "name": "Krea 2 Raw", "repo": "krea/Krea-2-Raw", "size": "14 GB", "type": "KREA_2"},
+    {"id": "flux-dev", "name": "FLUX.1 [dev]", "repo": "black-forest-labs/FLUX.1-dev", "size": "23 GB", "type": "FLUX_DEV_1", "gated": True},
+    {"id": "flux-schnell", "name": "FLUX.1 [schnell]", "repo": "black-forest-labs/FLUX.1-schnell", "size": "23 GB", "type": "FLUX_1_SCHNELL"},
+    {"id": "sdxl-base", "name": "Stable Diffusion XL 1.0 Base", "repo": "stabilityai/stable-diffusion-xl-base-1.0", "size": "6.5 GB", "type": "STABLE_DIFFUSION_XL_10_BASE"},
+    {"id": "sd15", "name": "Stable Diffusion 1.5", "repo": "runwayml/stable-diffusion-v1-5", "size": "4 GB", "type": "STABLE_DIFFUSION_15"},
+    {"id": "sd35-large", "name": "Stable Diffusion 3.5 Large", "repo": "stabilityai/stable-diffusion-3.5-large", "size": "16 GB", "type": "STABLE_DIFFUSION_35", "gated": True},
+    {"id": "sana-1600m", "name": "Sana 1.6B", "repo": "Efficient-Large-Model/Sana_1600M_1024px", "size": "3.5 GB", "type": "SANA"},
+    {"id": "hunyuan-video", "name": "HunyuanVideo", "repo": "tencent/HunyuanVideo", "size": "26 GB", "type": "HUNYUAN_VIDEO"},
+]
+
+
+class DownloadManager:
+    def __init__(self):
+        self.active_downloads: Dict[str, Dict[str, Any]] = {}
+
+    def start_download(self, repo_id: str, dest_dir: str, token: Optional[str] = None):
+        if repo_id in self.active_downloads and self.active_downloads[repo_id]["status"] == "downloading":
+            return
+        self.active_downloads[repo_id] = {
+            "repo": repo_id,
+            "status": "downloading",
+            "dest": dest_dir,
+            "error": None,
+            "started_at": time.strftime("%H:%M:%S")
+        }
+
+        def worker():
+            try:
+                os.makedirs(dest_dir, exist_ok=True)
+                os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
+                if snapshot_download:
+                    snapshot_download(
+                        repo_id=repo_id,
+                        local_dir=dest_dir,
+                        token=token or os.environ.get("HF_TOKEN"),
+                        resume_download=True,
+                    )
+                self.active_downloads[repo_id]["status"] = "completed"
+                state.log(f"Finished downloading model: {repo_id}")
+            except Exception as e:
+                self.active_downloads[repo_id]["status"] = "failed"
+                self.active_downloads[repo_id]["error"] = str(e)
+                state.log(f"Download failed for {repo_id}: {e}")
+
+        t = threading.Thread(target=worker, daemon=True)
+        t.start()
+
+
+download_mgr = DownloadManager()
 
 
 class TrainingState:
@@ -116,6 +172,7 @@ class TrainingState:
             "gpu": gpu_info,
             "recent_loss": self.loss_history[-1]["loss"] if self.loss_history else None,
             "sample_count": len(self.sample_images),
+            "downloads": download_mgr.active_downloads,
         }
 
 
@@ -166,7 +223,6 @@ async def get_current_config():
 async def update_current_config(config_data: Dict[str, Any]):
     try:
         current_dict = state.config.to_pack_dict(secrets=True)
-        # Deep merge updates
         def update_deep(d, u):
             for k, v in u.items():
                 if isinstance(v, dict) and k in d and isinstance(d[k], dict):
@@ -179,6 +235,138 @@ async def update_current_config(config_data: Dict[str, Any]):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/browse")
+async def browse_directory(path: Optional[str] = Query(None)):
+    target_path = Path(path) if path else Path(state.config.workspace_dir or "/workspace")
+    if not target_path.exists():
+        target_path = SCRIPT_DIR
+    items = []
+    try:
+        for entry in os.scandir(target_path):
+            if not entry.name.startswith("."):
+                items.append({
+                    "name": entry.name,
+                    "path": str(Path(entry.path).resolve()),
+                    "is_dir": entry.is_dir(),
+                })
+        items.sort(key=lambda x: (not x["is_dir"], x["name"].lower()))
+        return {
+            "current_path": str(target_path.resolve()),
+            "parent_path": str(target_path.parent.resolve()) if target_path.parent != target_path else None,
+            "items": items
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/datasets/auto_detect")
+async def auto_detect_datasets(payload: Dict[str, Any]):
+    base_dir = payload.get("path")
+    if not base_dir:
+        workspace = Path(state.config.workspace_dir or "/workspace")
+        base_dir = str(workspace / "datasets")
+        if not os.path.exists(base_dir):
+            base_dir = str(SCRIPT_DIR / "datasets") if os.path.exists(str(SCRIPT_DIR / "datasets")) else str(workspace)
+
+    valid_img_exts = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
+    detected_concepts = []
+
+    if os.path.exists(base_dir):
+        # Look for subdirectories or root directory
+        subdirs = [os.path.join(base_dir, d) for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))]
+        if not subdirs:
+            subdirs = [base_dir]
+
+        for folder in subdirs:
+            folder_name = os.path.basename(folder)
+            if folder_name.startswith("."):
+                continue
+            images = [f for f in os.listdir(folder) if os.path.splitext(f)[1].lower() in valid_img_exts]
+            if images:
+                captions = [f for f in os.listdir(folder) if f.endswith(".txt")]
+                mask_dir = os.path.join(folder, "masks") if os.path.isdir(os.path.join(folder, "masks")) else ""
+                detected_concepts.append({
+                    "name": folder_name,
+                    "image_folder": str(Path(folder).resolve()),
+                    "image_count": len(images),
+                    "caption_count": len(captions),
+                    "repeat": 1,
+                    "resolution": "1024" if "1024" in folder_name or "flux" in folder_name.lower() or "sdxl" in folder_name.lower() else "512",
+                    "caption_extension": ".txt",
+                    "mask_folder": str(Path(mask_dir).resolve()) if mask_dir else "",
+                })
+
+    state.log(f"Auto-detected {len(detected_concepts)} concepts from {base_dir}")
+    return {"status": "ok", "concepts": detected_concepts}
+
+
+@app.get("/api/models/presets")
+async def list_model_presets():
+    return POPULAR_DOWNLOAD_TARGETS
+
+
+@app.post("/api/models/download")
+async def trigger_model_download(payload: Dict[str, Any]):
+    repo = payload.get("repo_id")
+    token = payload.get("token") or state.config.secrets.huggingface_token
+    if not repo:
+        raise HTTPException(status_code=400, detail="Missing repo_id")
+    workspace = Path(state.config.workspace_dir or "/workspace")
+    dest_name = repo.replace("/", "--")
+    dest_dir = str(workspace / "models" / dest_name)
+    download_mgr.start_download(repo, dest_dir, token)
+    state.log(f"Started background download for {repo}")
+    return {"status": "download_started", "dest": dest_dir}
+
+
+@app.post("/api/autotune_vram")
+async def autotune_vram(payload: Dict[str, Any]):
+    target_gb = payload.get("vram_gb", 16)
+    model_type = state.config.model_type
+    current = state.config.to_pack_dict(secrets=True)
+
+    if target_gb <= 12:
+        current["batch_size"] = 1
+        current["gradient_accumulation_steps"] = 4
+        current["gradient_checkpointing"] = True
+        current["compile"] = False
+        if "transformer" in current:
+            current["transformer"]["weight_dtype"] = "INT_W8A8"
+            current["transformer"]["offload_fraction"] = 0.5
+        if "text_encoder" in current:
+            current["text_encoder"]["weight_dtype"] = "FLOAT_8"
+        if "text_encoder_2" in current:
+            current["text_encoder_2"]["weight_dtype"] = "FLOAT_8"
+    elif target_gb <= 16:
+        current["batch_size"] = 2 if not model_type.is_flux() else 1
+        current["gradient_accumulation_steps"] = 2
+        current["gradient_checkpointing"] = True
+        current["compile"] = True
+        if "transformer" in current:
+            current["transformer"]["weight_dtype"] = "INT_W8A8"
+            current["transformer"]["offload_fraction"] = 0.3
+        if "text_encoder" in current:
+            current["text_encoder"]["weight_dtype"] = "FLOAT_8"
+        if "text_encoder_2" in current:
+            current["text_encoder_2"]["weight_dtype"] = "BFLOAT_16"
+    else: # 24GB+
+        current["batch_size"] = 4 if not model_type.is_flux() else 2
+        current["gradient_accumulation_steps"] = 1
+        current["gradient_checkpointing"] = True
+        current["compile"] = True
+        if "transformer" in current:
+            current["transformer"]["weight_dtype"] = "BFLOAT_16"
+            current["transformer"]["offload_fraction"] = 0.0
+        if "text_encoder" in current:
+            current["text_encoder"]["weight_dtype"] = "BFLOAT_16"
+        if "text_encoder_2" in current:
+            current["text_encoder_2"]["weight_dtype"] = "BFLOAT_16"
+
+    state.config = TrainConfig.from_dict(current)
+    state.log(f"Auto-tuned hyperparameters for {target_gb}GB VRAM profile")
+    return {"status": "ok", "config": state.config.to_pack_dict(secrets=True)}
 
 
 @app.get("/api/presets")
@@ -286,7 +474,6 @@ def _on_update_train_progress(train_progress: TrainProgress, max_step: int, max_
         else:
             state.eta_str = "Estimating..."
 
-    # Record loss if available in progress
     if hasattr(train_progress, "loss") and train_progress.loss is not None:
         loss_val = float(train_progress.loss)
         state.loss_history.append({"step": state.total_step, "loss": round(loss_val, 5)})
@@ -424,7 +611,6 @@ async def get_logs():
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     active_websockets.append(websocket)
-    # Send initial snapshot
     await websocket.send_text(json.dumps({
         "type": "init",
         "status": state.to_status_dict(),

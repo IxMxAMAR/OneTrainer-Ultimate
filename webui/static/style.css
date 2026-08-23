@@ -161,6 +161,9 @@ body {
   cursor: pointer;
   border: 1px solid transparent;
   transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .btn-primary {
@@ -202,6 +205,29 @@ body {
   outline: none;
 }
 .select-preset:focus { border-color: var(--border-focus); }
+
+/* VRAM Profile Bar */
+.vram-profile-bar {
+  background: #11141c;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vram-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #a855f7;
+}
+
+.btn-vram {
+  font-size: 12px;
+  padding: 6px 12px;
+}
 
 /* Navigation Tabs */
 .app-tabs {
@@ -284,6 +310,7 @@ body {
 
 .flex-1 { flex: 1; }
 .flex-2 { flex: 2; }
+.flex-gap { display: flex; gap: 10px; }
 .flex-checkbox {
   align-items: center;
   justify-content: center;
@@ -299,6 +326,16 @@ label {
 .help-text {
   font-size: 11px;
   color: var(--text-muted);
+}
+
+.input-with-btn {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-browse {
+  padding: 0 12px;
+  flex-shrink: 0;
 }
 
 input[type="text"],
@@ -357,6 +394,15 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.concept-badge {
+  background: #1e1b4b;
+  color: #c7d2fe;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
 }
 
 .btn-remove-concept {
@@ -419,7 +465,10 @@ input:focus, select:focus, textarea:focus {
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
   width: 90%;
-  max-width: 500px;
+  max-width: 650px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
   padding: 24px;
 }
 
@@ -430,12 +479,61 @@ input:focus, select:focus, textarea:focus {
   margin-bottom: 16px;
 }
 
+.modal-body {
+  overflow-y: auto;
+  flex: 1;
+}
+
 .modal-close-btn {
   background: transparent;
   border: none;
   color: var(--text-muted);
   font-size: 20px;
   cursor: pointer;
+}
+
+.browser-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.browser-item {
+  background: var(--bg-input);
+  padding: 10px 14px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+}
+.browser-item:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-primary);
+}
+
+.model-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.model-hub-card {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.model-hub-title {
+  font-weight: 700;
+  color: #fff;
+  font-size: 14px;
 }
 
 .sample-gallery-grid {

@@ -4,6 +4,19 @@ let currentConfig = {};
 let isTraining = false;
 let lossChart = null;
 let ws = null;
+let currentBrowseTargetInput = null;
+
+// Architecture-tailored default sample prompts
+const SAMPLE_PROMPT_DEFAULTS = {
+  KREA_2: "masterpiece, highly detailed 8k portrait of a cyberpunk character in neon city rain\ncinematic wide shot of a futuristic landscape at golden hour, sharp focus",
+  FLUX_DEV_1: "photo of a serene woman walking in an autumn forest, golden hour lighting, 8k uhd, dslr, natural skin texture\na vibrant street market at night with neon lights and reflections on wet asphalt",
+  FLUX_1_SCHNELL: "a majestic eagle flying over snow-covered mountains, highly detailed, dramatic lighting",
+  STABLE_DIFFUSION_XL_10_BASE: "masterpiece, best quality, portrait of a warrior with ornate armor, cinematic lighting, photorealistic\na cozy cabin in the woods during a winter snowfall, warm light from windows",
+  STABLE_DIFFUSION_15: "masterpiece, best quality, 1girl, solo, looking at viewer, detailed eyes, cinematic lighting\na fantasy castle surrounded by glowing floating crystals, digital painting",
+  STABLE_DIFFUSION_35: "a close up portrait of a futuristic astronaut with reflections in the visor, high detail, 8k",
+  SANA: "artistic digital illustration of an enchanted forest with bioluminescent mushrooms, vibrant colors",
+  HUNYUAN_VIDEO: "a cinematic drone shot moving through a mountain valley with waterfalls, golden sunlight"
+};
 
 // Initialize Chart.js
 function initLossChart() {
@@ -104,7 +117,6 @@ function updateStatus(status) {
     btnSave.disabled = true;
   }
 
-  // Progress Bars
   const step = status.step || 0;
   const maxStep = status.max_step || 100;
   const epoch = status.epoch || 0;
@@ -119,7 +131,6 @@ function updateStatus(status) {
   document.getElementById('stepProgressBar').style.width = `${stepPct}%`;
   document.getElementById('epochProgressBar').style.width = `${epochPct}%`;
 
-  // GPU Resource Metrics
   if (status.gpu && status.gpu.name) {
     document.getElementById('gpuName').textContent = status.gpu.name;
     document.getElementById('gpuAllocated').textContent = `${status.gpu.allocated_gb} GB`;
@@ -218,7 +229,7 @@ function renderConcepts(concepts) {
   const container = document.getElementById('conceptsList');
   container.innerHTML = '';
   if (!concepts || concepts.length === 0) {
-    container.innerHTML = '<div class="empty-placeholder">No concepts configured. Click "+ Add New Concept" above.</div>';
+    container.innerHTML = '<div class="empty-placeholder">No concepts configured. Click "1-Click Auto-Detect" or "+ Add Concept Manually" above.</div>';
     return;
   }
 
@@ -227,12 +238,18 @@ function renderConcepts(concepts) {
     card.className = 'concept-card';
     card.innerHTML = `
       <div class="concept-card-top">
-        <strong style="color: #fff;">Concept #${idx + 1}: ${c.name || 'Default Concept'}</strong>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <strong style="color: #fff;">${c.name || `Concept #${idx + 1}`}</strong>
+          ${c.image_count ? `<span class="concept-badge">${c.image_count} Images (${c.caption_count || 0} Captions)</span>` : ''}
+        </div>
         <button class="btn-remove-concept" onclick="removeConcept(${idx})">&times;</button>
       </div>
       <div class="form-group">
         <label>Image Directory</label>
-        <input type="text" value="${c.image_folder || ''}" onchange="updateConcept(${idx}, 'image_folder', this.value)" placeholder="/workspace/datasets/my_concept" />
+        <div class="input-with-btn">
+          <input type="text" id="concept_img_${idx}" value="${c.image_folder || ''}" onchange="updateConcept(${idx}, 'image_folder', this.value)" placeholder="/workspace/datasets/my_concept" />
+          <button class="btn btn-secondary btn-browse" onclick="openFileBrowser('concept_img_${idx}')">📁</button>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group flex-1">
@@ -247,7 +264,10 @@ function renderConcepts(concepts) {
       <div class="form-row">
         <div class="form-group flex-1">
           <label>Mask Folder (Optional)</label>
-          <input type="text" value="${c.mask_folder || ''}" onchange="updateConcept(${idx}, 'mask_folder', this.value)" placeholder="Optional mask path" />
+          <div class="input-with-btn">
+            <input type="text" id="concept_mask_${idx}" value="${c.mask_folder || ''}" onchange="updateConcept(${idx}, 'mask_folder', this.value)" placeholder="Optional mask path" />
+            <button class="btn btn-secondary btn-browse" onclick="openFileBrowser('concept_mask_${idx}')">📁</button>
+          </div>
         </div>
         <div class="form-group flex-1">
           <label>Caption Extension</label>
@@ -285,7 +305,48 @@ document.getElementById('btnAddConcept').addEventListener('click', () => {
   renderConcepts(currentConfig.concepts);
 });
 
-// Preset Dropdown Loader
+// 1-Click Dataset Auto-Detector
+document.getElementById('btnAutoDetectDatasets').addEventListener('click', async () => {
+  try {
+    const res = await fetch('/api/datasets/auto_detect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    if (data.concepts && data.concepts.length > 0) {
+      currentConfig.concepts = data.concepts;
+      renderConcepts(currentConfig.concepts);
+      alert(`Auto-detected ${data.concepts.length} concept dataset folders!`);
+    } else {
+      alert('No image folders found in /workspace/datasets. Please place your image folders there or browse manually.');
+    }
+  } catch (e) {
+    alert(`Error scanning datasets: ${e}`);
+  }
+});
+
+// 1-Click VRAM Hardware Optimizer
+window.applyVRAMProfile = async function(vramGb) {
+  try {
+    syncFormToConfig();
+    const res = await fetch('/api/autotune_vram', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vram_gb: vramGb })
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      currentConfig = data.config;
+      populateForm(currentConfig);
+      alert(`⚡ Applied ${vramGb}GB VRAM training profile! Hyperparameters, quantization, and offloading adjusted.`);
+    }
+  } catch (e) {
+    alert(`Failed to apply VRAM profile: ${e}`);
+  }
+};
+
+// Preset Dropdown Loader with Intelligent Auto-Filling
 async function fetchPresets() {
   try {
     const res = await fetch('/api/presets');
@@ -317,14 +378,169 @@ document.getElementById('presetSelect').addEventListener('change', async (e) => 
     const data = await res.json();
     if (data.status === 'ok') {
       currentConfig = data.config;
+
+      // Smart Defaults: Auto-fill tailored sample prompts if empty
+      const modelType = currentConfig.model_type;
+      const sampleTextArea = document.getElementById('sample_prompts');
+      if (SAMPLE_PROMPT_DEFAULTS[modelType]) {
+        sampleTextArea.value = SAMPLE_PROMPT_DEFAULTS[modelType];
+      }
+
+      // Smart Defaults: Auto-name output destination
+      if (!currentConfig.output_model_destination || currentConfig.output_model_destination === 'models/lora.safetensors' || currentConfig.output_model_destination === 'models/model.safetensors') {
+        const safeCat = cat.toLowerCase().replace(/\s+/g, '_');
+        const safeName = file.replace(/#/g, '').replace(/\.json/g, '').toLowerCase().replace(/\s+/g, '_');
+        currentConfig.output_model_destination = `output/${safeCat}_${safeName}.safetensors`;
+      }
+
+      // Auto-scan datasets if concepts are empty
+      if (!currentConfig.concepts || currentConfig.concepts.length === 0) {
+        try {
+          const scanRes = await fetch('/api/datasets/auto_detect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+          const scanData = await scanRes.json();
+          if (scanData.concepts && scanData.concepts.length > 0) {
+            currentConfig.concepts = scanData.concepts;
+          }
+        } catch (_) {}
+      }
+
       populateForm(currentConfig);
       renderConcepts(currentConfig.concepts || []);
-      alert(`Loaded preset: ${cat}/${file}`);
+      alert(`Loaded preset: ${cat} (${file}) with smart defaults!`);
     }
   } catch (err) {
     alert(`Failed to load preset: ${err}`);
   }
 });
+
+// Interactive File / Folder Browser Modal
+window.openFileBrowser = async function(targetInputId, startPath = null) {
+  currentBrowseTargetInput = targetInputId;
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalBody = document.getElementById('modalBody');
+
+  modalTitle.textContent = '📁 Select Folder or File';
+  modalBody.innerHTML = '<div style="padding: 20px; text-align: center;">Loading directory...</div>';
+  modalOverlay.classList.remove('hidden');
+
+  try {
+    const url = startPath ? `/api/browse?path=${encodeURIComponent(startPath)}` : '/api/browse';
+    const res = await fetch(url);
+    const data = await res.json();
+
+    let html = `
+      <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
+        <span style="color: #a855f7; font-family: monospace; word-break: break-all;">${data.current_path}</span>
+        <button class="btn btn-primary" onclick="selectPath('${data.current_path.replace(/\\/g, '/')}')">Select Current Folder</button>
+      </div>
+      <div class="browser-list">
+    `;
+
+    if (data.parent_path) {
+      html += `
+        <div class="browser-item" onclick="openFileBrowser('${targetInputId}', '${data.parent_path.replace(/\\/g, '/')}')">
+          <span>📁 .. (Up to parent)</span>
+        </div>
+      `;
+    }
+
+    data.items.forEach(item => {
+      const cleanPath = item.path.replace(/\\/g, '/');
+      if (item.is_dir) {
+        html += `
+          <div class="browser-item" onclick="openFileBrowser('${targetInputId}', '${cleanPath}')">
+            <span>📁 ${item.name}</span>
+            <button class="btn btn-secondary" onclick="event.stopPropagation(); selectPath('${cleanPath}')">Select</button>
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="browser-item" onclick="selectPath('${cleanPath}')">
+            <span>📄 ${item.name}</span>
+            <button class="btn btn-secondary">Select</button>
+          </div>
+        `;
+      }
+    });
+
+    html += '</div>';
+    modalBody.innerHTML = html;
+  } catch (e) {
+    modalBody.innerHTML = `<div style="color: #ef4444; padding: 20px;">Error browsing: ${e}</div>`;
+  }
+};
+
+window.selectPath = function(chosenPath) {
+  if (currentBrowseTargetInput) {
+    const input = document.getElementById(currentBrowseTargetInput);
+    if (input) {
+      input.value = chosenPath;
+      input.dispatchEvent(new Event('change'));
+    }
+  }
+  document.getElementById('modalOverlay').classList.add('hidden');
+};
+
+// Model Hub & Downloader Modal
+document.getElementById('btnModelHub').addEventListener('click', async () => {
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalBody = document.getElementById('modalBody');
+
+  modalTitle.textContent = '📥 Model Hub — 1-Click Hugging Face Downloader';
+  modalOverlay.classList.remove('hidden');
+
+  try {
+    const res = await fetch('/api/models/presets');
+    const models = await res.json();
+
+    let html = '<div class="model-hub-grid">';
+    models.forEach(m => {
+      html += `
+        <div class="model-hub-card">
+          <div class="model-hub-title">${m.name}</div>
+          <div style="font-size: 11px; color: #9ca3af; font-family: monospace;">${m.repo} (${m.size})</div>
+          ${m.gated ? '<div style="font-size: 11px; color: #f59e0b;">Requires HF Token in Model tab</div>' : ''}
+          <div style="display: flex; gap: 6px; margin-top: 6px;">
+            <button class="btn btn-primary" onclick="downloadModelHub('${m.repo}')">⚡ Download to /workspace</button>
+            <button class="btn btn-secondary" onclick="useModelInConfig('${m.repo}', '${m.type}')">Use as Base</button>
+          </div>
+        </div>
+      `;
+    });
+    html += '</div>';
+    modalBody.innerHTML = html;
+  } catch (e) {
+    modalBody.innerHTML = `<div>Error loading model hub: ${e}</div>`;
+  }
+});
+
+window.downloadModelHub = async function(repoId) {
+  try {
+    const res = await fetch('/api/models/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repo_id: repoId })
+    });
+    const data = await res.json();
+    alert(`Started background download for ${repoId} into ${data.dest}! You can watch the download status in the Live Dashboard logs.`);
+  } catch (e) {
+    alert(`Failed to trigger download: ${e}`);
+  }
+};
+
+window.useModelInConfig = function(repoId, modelType) {
+  document.getElementById('base_model_name').value = repoId;
+  document.getElementById('model_type').value = modelType;
+  syncFormToConfig();
+  document.getElementById('modalOverlay').classList.add('hidden');
+  alert(`Base model set to ${repoId} (${modelType})!`);
+};
 
 // Start / Stop Training
 document.getElementById('btnStartTraining').addEventListener('click', async () => {

@@ -45,6 +45,7 @@
       <select id="presetSelect" class="select-preset">
         <option value="" disabled selected>⚡ Load Architecture Preset...</option>
       </select>
+      <button id="btnModelHub" class="btn btn-secondary">📥 Model Hub</button>
       <button id="btnSaveConfig" class="btn btn-secondary">💾 Save Config</button>
       <button id="btnLoadConfig" class="btn btn-secondary">📂 Load Config</button>
       <button id="btnSampleNow" class="btn btn-accent" title="Sample Now" disabled>🎨 Sample</button>
@@ -109,7 +110,10 @@
 
           <div class="form-group">
             <label>Base Model Path or Hugging Face Repo ID</label>
-            <input type="text" id="base_model_name" data-bind="base_model_name" placeholder="e.g. krea/Krea-2-Raw or stabilityai/stable-diffusion-xl-base-1.0 or black-forest-labs/FLUX.1-dev" />
+            <div class="input-with-btn">
+              <input type="text" id="base_model_name" data-bind="base_model_name" placeholder="e.g. krea/Krea-2-Raw or black-forest-labs/FLUX.1-dev or stabilityai/stable-diffusion-xl-base-1.0" />
+              <button class="btn btn-secondary btn-browse" onclick="openFileBrowser('base_model_name')">📁 Browse</button>
+            </div>
             <small class="help-text">Auto-downloads directly from Hugging Face Hub if a repository name is given.</small>
           </div>
 
@@ -128,7 +132,10 @@
 
           <div class="form-group">
             <label>Hugging Face Cache Directory</label>
-            <input type="text" id="huggingface_cache_dir" data-bind="huggingface_cache_dir" placeholder="/workspace/.cache/huggingface" />
+            <div class="input-with-btn">
+              <input type="text" id="huggingface_cache_dir" data-bind="huggingface_cache_dir" placeholder="/workspace/.cache/huggingface" />
+              <button class="btn btn-secondary btn-browse" onclick="openFileBrowser('huggingface_cache_dir')">📁</button>
+            </div>
           </div>
         </div>
 
@@ -199,7 +206,10 @@
           <div class="form-row">
             <div class="form-group flex-2">
               <label>Output Destination File</label>
-              <input type="text" id="output_model_destination" data-bind="output_model_destination" placeholder="output/my_lora.safetensors" />
+              <div class="input-with-btn">
+                <input type="text" id="output_model_destination" data-bind="output_model_destination" placeholder="output/my_lora.safetensors" />
+                <button class="btn btn-secondary btn-browse" onclick="openFileBrowser('output_model_destination')">📁</button>
+              </div>
             </div>
             <div class="form-group flex-1">
               <label>Output Format</label>
@@ -218,6 +228,14 @@
 
     <!-- 2. TRAINING & OPTIMIZER TAB -->
     <section id="trainingTab" class="tab-pane">
+      <!-- VRAM Auto-Tune Profile Toolbar -->
+      <div class="vram-profile-bar">
+        <span class="vram-label">⚡ 1-Click Hardware Optimizer:</span>
+        <button class="btn btn-secondary btn-vram" onclick="applyVRAMProfile(12)">12 GB VRAM</button>
+        <button class="btn btn-secondary btn-vram" onclick="applyVRAMProfile(16)">16 GB VRAM (Recommended)</button>
+        <button class="btn btn-secondary btn-vram" onclick="applyVRAMProfile(24)">24 GB+ VRAM (Full Speed)</button>
+      </div>
+
       <div class="card-grid">
         <div class="card">
           <div class="card-title">Training Method & Hyperparameters</div>
@@ -356,7 +374,10 @@
           <h2>Training Concepts & Datasets</h2>
           <p class="help-text">Configure image folders, captions, aspect ratio bucketing, and mask datasets.</p>
         </div>
-        <button id="btnAddConcept" class="btn btn-accent">+ Add New Concept</button>
+        <div class="flex-gap">
+          <button id="btnAutoDetectDatasets" class="btn btn-primary">🔍 1-Click Auto-Detect from /workspace/datasets</button>
+          <button id="btnAddConcept" class="btn btn-accent">+ Add Concept Manually</button>
+        </div>
       </div>
       <div id="conceptsList" class="concept-cards-container">
         <!-- Dynamically rendered concept cards -->
@@ -476,11 +497,11 @@
     </section>
   </main>
 
-  <!-- Modals for Save/Load Config -->
+  <!-- Modals -->
   <div id="modalOverlay" class="modal-overlay hidden">
     <div class="modal-box">
       <div class="modal-header">
-        <h3 id="modalTitle">Save / Load Configuration</h3>
+        <h3 id="modalTitle">Modal</h3>
         <button id="modalClose" class="modal-close-btn">&times;</button>
       </div>
       <div id="modalBody" class="modal-body"></div>
