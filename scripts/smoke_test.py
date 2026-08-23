@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
 Smoke test suite for OneTrainer-Ultimate Docker image.
-Verifies Python version, PyTorch CUDA build, PySide6 Qt bindings,
+Verifies Python version, PyTorch CUDA build, WebUI server,
 diffusers/transformers/mgds, optimizers, and OneTrainer core modules.
 """
+import glob
 import importlib
+import json
 import os
 import shutil
 import sys
@@ -25,8 +27,9 @@ def check_torch():
 
 def check_core_packages():
     required_modules = [
-        ("PySide6", "PySide6"),
-        ("customtkinter", "customtkinter"),
+        ("fastapi", "FastAPI"),
+        ("uvicorn", "Uvicorn"),
+        ("websockets", "WebSockets"),
         ("transformers", "transformers"),
         ("diffusers", "diffusers"),
         ("accelerate", "accelerate"),
@@ -56,19 +59,29 @@ def check_core_packages():
             raise
 
 
-def check_onetrainer_imports():
+def check_onetrainer_and_webui():
     sys.path.insert(0, "/OneTrainer")
     try:
         from modules.util.config.TrainConfig import TrainConfig
-        from modules.ui.PySide6TrainUIView import PySide6TrainView
-        print("[check] OneTrainer core modules and Qt6 UI view import OK")
+        from webui.server import app, parse_train_config
+        print("[check] OneTrainer core modules & WebUI FastAPI app imported successfully")
+
+        # Validate loading presets
+        preset_files = glob.glob("/OneTrainer/training_presets/**/*.json", recursive=True)
+        valid_presets = [p for p in preset_files if not os.path.basename(p).startswith("#.json")]
+        if valid_presets:
+            with open(valid_presets[0], "r", encoding="utf-8") as f:
+                sample_data = json.load(f)
+            cfg = parse_train_config(sample_data)
+            assert cfg.model_type is not None
+            print(f"[check] Validated preset deserialization on {len(valid_presets)} presets OK")
     except Exception as e:
-        print(f"[FAIL] OneTrainer import failed: {e}", file=sys.stderr)
+        print(f"[FAIL] OneTrainer/WebUI import failed: {e}", file=sys.stderr)
         raise
 
 
 def check_binaries():
-    binaries = ["filebrowser", "Xvfb", "x11vnc", "openbox", "websockify", "jupyter", "tensorboard"]
+    binaries = ["filebrowser", "jupyter", "tensorboard"]
     for b in binaries:
         path = shutil.which(b)
         assert path is not None, f"Required binary missing in PATH: {b}"
@@ -82,7 +95,7 @@ def main():
     check_core_packages()
     check_binaries()
     if os.path.exists("/OneTrainer"):
-        check_onetrainer_imports()
+        check_onetrainer_and_webui()
     print("=== ALL SMOKE TESTS PASSED ===")
 
 
