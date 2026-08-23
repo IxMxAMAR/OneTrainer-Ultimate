@@ -1,7 +1,6 @@
 # =============================================================================
 # OneTrainer-Ultimate — Linux x86_64 / Python 3.12 / CUDA 12.8 / PyTorch cu128
-# RunPod-optimized with Native WebUI, JupyterLab, FileBrowser, TensorBoard,
-# FlashAttention-2, bitsandbytes, and persistent /workspace volume wiring.
+# Fast build with pre-compiled wheels (FlashAttention-2, bitsandbytes, Triton)
 # =============================================================================
 FROM nvidia/cuda:12.8.0-cudnn-devel-ubuntu22.04
 
@@ -49,33 +48,22 @@ RUN pip install torch==2.8.0+cu128 torchvision==0.23.0+cu128 torchaudio==2.8.0+c
       --index-url https://download.pytorch.org/whl/cu128 \
  && python -c "import torch; assert torch.version.cuda=='12.8', torch.version.cuda; assert '+cu128' in torch.__version__, torch.__version__; print('PyTorch OK:', torch.__version__)"
 
-# ---- 4. Attention Backends (FlashAttention-2 & SageAttention) ----
+# ---- 4. Attention Backends (Pre-built FlashAttention-2 & SageAttention Wheels) ----
 COPY scripts/ /opt/scripts/
 RUN chmod +x /opt/scripts/*.sh /opt/scripts/*.py
 
+# Pre-compiled FlashAttention-2 wheel (matches torch 2.8.0+cu128 / python 3.12)
 RUN pip install --no-cache-dir \
       "https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.3.post1/flash_attn-2.8.3.post1%2Bcu12torch2.8cxx11abiTRUE-cp312-cp312-linux_x86_64.whl" \
    || pip install flash-attn==2.8.3.post1 --no-build-isolation \
-   || echo "WARN: flash-attn install skipped or failed"
+   || echo "WARN: flash-attn install skipped (SDPA fallback active)"
 
-RUN bash -c '\
-  try_wheel() { pip uninstall -y sageattention >/dev/null 2>&1 || true; \
-                pip install --no-cache-dir --no-deps --force-reinstall "$1" \
-                && python /opt/scripts/sage_check.py; }; \
-  if try_wheel "https://huggingface.co/Kijai/PrecompiledWheels/resolve/main/sageattention-2.2.0-cp312-cp312-linux_x86_64.whl"; then \
-    echo "SageAttention: Kijai prebuilt wheel OK"; \
-  elif try_wheel "https://github.com/thekie/sageattention-wheel/releases/download/2.2.0.post1/sageattention-2.2.0-cp312-cp312-linux_x86_64.whl"; then \
-    echo "SageAttention: thekie prebuilt wheel OK"; \
-  else \
-    echo "SageAttention: no usable prebuilt wheel -> compiling from source"; \
-    pip uninstall -y sageattention || true; \
-    ( git clone --depth 1 https://github.com/thu-ml/SageAttention.git /tmp/sage \
-      && cd /tmp/sage \
-      && TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9;12.0" EXT_PARALLEL=2 NVCC_APPEND_FLAGS="--threads 4" MAX_JOBS=4 \
-         pip install --no-build-isolation . ) \
-      || echo "WARN: SageAttention source build failed; SDPA fallback active"; \
-    rm -rf /tmp/sage; \
-  fi'
+# Pre-compiled SageAttention wheel (optional inference acceleration)
+RUN pip install --no-cache-dir --no-deps \
+      "https://huggingface.co/Kijai/PrecompiledWheels/resolve/main/sageattention-2.2.0-cp312-cp312-linux_x86_64.whl" \
+   || pip install --no-cache-dir --no-deps \
+      "https://github.com/thekie/sageattention-wheel/releases/download/2.2.0.post1/sageattention-2.2.0-cp312-cp312-linux_x86_64.whl" \
+   || echo "WARN: SageAttention wheel skipped (SDPA fallback active)"
 
 # ---- 5. Pre-bake Core ML Ecosystem, Web Framework & Optimizers ----
 RUN uv pip install --no-cache \
@@ -110,7 +98,7 @@ RUN curl -fsSL https://github.com/filebrowser/filebrowser/releases/download/v2.3
  && /usr/local/bin/filebrowser version
 
 # ---- 8. Smoke Test Gate ----
-RUN python -c "from modules.util.config.TrainConfig import TrainConfig; print('OneTrainer core OK'); from webui.server import app; print('WebUI App OK')"
+RUN python -c "from modules.util.config.TrainConfig import TrainConfig; print('OneTrainer core OK'); from webui.server import app, parse_train_config; print('WebUI App OK')"
 
 # ---- 9. Ports & Entrypoint ----
 EXPOSE 8080 8888 8081 6006 22
