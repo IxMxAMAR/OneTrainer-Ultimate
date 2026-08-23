@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_menu xmlns="http://openbox.org/3.4/menu">
+  <menu id="root-menu" label="OneTrainer Ultimate">
+    <item label="OneTrainer (Qt6 Main GUI)">
+      <action name="Execute"><command>/opt/scripts/launch_onetrainer.sh</command></action>
+    </item>
+    <item label="Caption &amp; Masking Tool">
+      <action name="Execute"><command>/opt/scripts/launch_caption_ui.sh</command></action>
+    </item>
+    <item label="Model Converter UI">
+      <action name="Execute"><command>/opt/scripts/launch_convert_model_ui.sh</command></action>
+    </item>
+    <item label="OneTrainer (CustomTkinter)">
+      <action name="Execute"><command>/opt/scripts/launch_onetrainer_ctk.sh</command></action>
+    </item>
+    <separator />
+    <item label="Terminal (xterm)">
+      <action name="Execute"><command>xterm -bg black -fg white -fa 'Monospace' -fs 11</command></action>
+    </item>
+    <item label="GPU Monitor (nvitop in xterm)">
+      <action name="Execute"><command>xterm -bg black -fg green -title 'nvitop' -e nvitop</command></action>
+    </item>
+    <separator />
+    <item label="Restart Openbox">
+      <action name="Restart" />
+    </item>
+  </menu>
+</openbox_menu>

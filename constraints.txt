@@ -1,0 +1,55 @@
+# =============================================================================
+# constraints.txt — OneTrainer Ultimate (cu128 / py3.12 / sm_120 Blackwell)
+# Applied to EVERY pip/uv install via PIP_CONSTRAINT / UV_CONSTRAINT.
+# Bounds versions only; never installs. ABI-sensitive packages are hard-pinned.
+# =============================================================================
+
+# --- PyTorch triple (cu128, Blackwell sm_120 capable) ---
+torch==2.8.0+cu128
+torchvision==0.23.0+cu128
+torchaudio==2.8.0+cu128
+
+# --- Triton paired with torch 2.8.0 ---
+triton==3.4.0
+
+# --- Core scientific & numerical ---
+numpy==2.2.6
+scipy==1.15.3
+matplotlib==3.10.3
+pillow==11.3.0
+
+# --- OpenCV & ONNX Runtime (single GPU winners) ---
+opencv-contrib-python-headless==4.11.0.86
+onnxruntime-gpu==1.22.0
+
+# --- HuggingFace & Diffusion Ecosystem ---
+transformers==4.53.2
+tokenizers==0.21.2
+huggingface-hub==0.34.3
+accelerate==1.8.1
+safetensors==0.5.3
+peft==0.16.0
+sentencepiece==0.2.0
+open-clip-torch==2.32.0
+gguf==0.17.1
+
+# --- Optimizers ---
+bitsandbytes==0.45.3
+dadaptation==3.2
+lion-pytorch==0.2.3
+prodigyopt==1.1.2
+schedulefree==1.4.1
+pytorch_optimizer==3.6.0
+prodigy-plus-schedule-free==2.0.1
+adv_optm==2.2.3
+
+# --- UI & Utilities ---
+PySide6==6.8.2.1
+customtkinter==5.2.2
+tensorboard==2.19.0
+psutil==7.2.2
+requests==2.32.3
+deepdiff==8.2.0
+av==14.2.0
+scenedetect==0.6.5.2
+parse==1.20.2

@@ -1,0 +1,18 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Workspace & logs
+workspace/
+logs/
+*.log
+.DS_Store
+.idea/
+.vscode/
