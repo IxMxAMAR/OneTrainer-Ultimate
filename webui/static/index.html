@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OneTrainer WebUI</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <!-- Header Bar -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-badge">OneTrainer</div>
+      <div class="status-indicator" id="statusPill">
+        <span class="status-dot"></span>
+        <span id="statusText">Idle</span>
+      </div>
+      <div class="eta-pill" id="etaPill">ETA: --:--</div>
+    </div>
+
+    <!-- Live Dual Progress Bars -->
+    <div class="header-center">
+      <div class="progress-group">
+        <div class="progress-meta">
+          <span class="label">Step</span>
+          <span class="val" id="stepCounter">0 / 0</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="stepProgressBar" style="width: 0%;"></div>
+        </div>
+      </div>
+      <div class="progress-group">
+        <div class="progress-meta">
+          <span class="label">Epoch</span>
+          <span class="val" id="epochCounter">0 / 0</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill epoch-fill" id="epochProgressBar" style="width: 0%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <select id="presetSelect" class="select-preset">
+        <option value="" disabled selected>⚡ Load Architecture Preset...</option>
+      </select>
+      <button id="btnSaveConfig" class="btn btn-secondary">💾 Save Config</button>
+      <button id="btnLoadConfig" class="btn btn-secondary">📂 Load Config</button>
+      <button id="btnSampleNow" class="btn btn-accent" title="Sample Now" disabled>🎨 Sample</button>
+      <button id="btnSaveCheckpoint" class="btn btn-accent" title="Save Checkpoint" disabled>💾 Save</button>
+      <button id="btnStartTraining" class="btn btn-primary">▶ Start Training</button>
+    </div>
+  </header>
+
+  <!-- Main Navigation Tabs -->
+  <nav class="app-tabs">
+    <button class="tab-btn active" data-tab="modelTab">🧠 Model & Base</button>
+    <button class="tab-btn" data-tab="trainingTab">⚡ Training & Optimizer</button>
+    <button class="tab-btn" data-tab="conceptsTab">📁 Dataset & Concepts</button>
+    <button class="tab-btn" data-tab="samplingTab">🎨 Sampling & Prompts</button>
+    <button class="tab-btn" data-tab="loraTab">🧩 LoRA / Network</button>
+    <button class="tab-btn" data-tab="dashboardTab">📈 Live Dashboard & Logs</button>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="app-content">
+
+    <!-- 1. MODEL TAB -->
+    <section id="modelTab" class="tab-pane active">
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-title">Base Model Configuration</div>
+          <div class="form-group">
+            <label>Model Architecture</label>
+            <select id="model_type" data-bind="model_type">
+              <option value="STABLE_DIFFUSION_XL_10_BASE">Stable Diffusion XL 1.0 (SDXL)</option>
+              <option value="FLUX_1_DEV">FLUX.1 [dev] (Flow-Matching 12B)</option>
+              <option value="FLUX_1_SCHNELL">FLUX.1 [schnell] (4-step 12B)</option>
+              <option value="FLUX_2_DEV">FLUX.2 [dev]</option>
+              <option value="STABLE_DIFFUSION_15">Stable Diffusion 1.5</option>
+              <option value="STABLE_DIFFUSION_3">Stable Diffusion 3 / 3.5 Large</option>
+              <option value="SANA">Sana (1.6B Linear Attention)</option>
+              <option value="HUNYUAN_VIDEO">HunyuanVideo</option>
+              <option value="PIXART_SIGMA">PixArt-Sigma</option>
+              <option value="PIXART_ALPHA">PixArt-Alpha</option>
+              <option value="CHROMA">Chroma</option>
+              <option value="STABLE_CASCADE">Stable Cascade</option>
+              <option value="QWEN_IMAGE">Qwen-Image</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Base Model Path or Hugging Face Repo ID</label>
+            <input type="text" id="base_model_name" data-bind="base_model_name" placeholder="e.g. stabilityai/stable-diffusion-xl-base-1.0 or black-forest-labs/FLUX.1-dev" />
+            <small class="help-text">Auto-downloads directly from Hugging Face Hub if a repository name is given.</small>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label>Hugging Face Access Token</label>
+              <input type="password" id="hf_token" data-bind="secrets.huggingface_token" placeholder="hf_xxxxxxxxxxxxxxxxx" />
+            </div>
+            <div class="form-group flex-checkbox">
+              <label class="switch-label">
+                <input type="checkbox" id="offline_mode" data-bind="offline_mode" />
+                <span>Offline Mode (Cache Only)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Hugging Face Cache Directory</label>
+            <input type="text" id="huggingface_cache_dir" data-bind="huggingface_cache_dir" placeholder="/workspace/.cache/huggingface" />
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Precision & Component Weights Dtypes</div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label>Transformer / UNet Weight Dtype</label>
+              <select id="unet_dtype" data-bind="unet.weight_dtype">
+                <option value="FLOAT_16">float16</option>
+                <option value="BFLOAT_16">bfloat16 (Recommended for Flux/SDXL)</option>
+                <option value="FLOAT_8">float8 (W8/FP8 - Low VRAM)</option>
+                <option value="FLOAT_32">float32 (Full precision)</option>
+                <option value="NFLOAT_4">nfloat4 (NF4 Quantized)</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label>Text Encoder Weight Dtype</label>
+              <select id="te_dtype" data-bind="text_encoder.weight_dtype">
+                <option value="FLOAT_16">float16</option>
+                <option value="BFLOAT_16">bfloat16</option>
+                <option value="FLOAT_32">float32</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label>Text Encoder 2 (T5 / CLIP-G) Dtype</label>
+              <select id="te2_dtype" data-bind="text_encoder_2.weight_dtype">
+                <option value="FLOAT_16">float16</option>
+                <option value="BFLOAT_16">bfloat16 (T5)</option>
+                <option value="FLOAT_8">float8 (T5 FP8 - Save 5GB+ VRAM)</option>
+                <option value="FLOAT_32">float32</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label>VAE Weight Dtype</label>
+              <select id="vae_dtype" data-bind="vae.weight_dtype">
+                <option value="FLOAT_32">float32 (Recommended for VAE)</option>
+                <option value="BFLOAT_16">bfloat16</option>
+                <option value="FLOAT_16">float16</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card-title mt-4">Output Configuration</div>
+          <div class="form-row">
+            <div class="form-group flex-2">
+              <label>Output Destination File</label>
+              <input type="text" id="output_model_destination" data-bind="output_model_destination" placeholder="output/my_lora.safetensors" />
+            </div>
+            <div class="form-group flex-1">
+              <label>Output Format</label>
+              <select id="output_model_format" data-bind="output_model_format">
+                <option value="KOHYA_LORA">Kohya LoRA (Standard)</option>
+                <option value="DIFFUSERS">Diffusers Format</option>
+                <option value="STANDARD">Standard Weights</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. TRAINING & OPTIMIZER TAB -->
+    <section id="trainingTab" class="tab-pane">
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-title">Training Method & Hyperparameters</div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label>Training Method</label>
+              <select id="training_method" data-bind="training_method">
+                <option value="LORA">LoRA (Low-Rank Adaptation)</option>
+                <option value="FINE_TUNE">Full Fine-Tuning</option>
+                <option value="EMBEDDING">Textual Inversion Embedding</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label>Layer Filter Preset</label>
+              <select id="layer_filter_preset" data-bind="layer_filter_preset">
+                <option value="attn-mlp">Attention + MLP (Standard)</option>
+                <option value="attn-only">Attention Only</option>
+                <option value="all">All Linear Layers</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label>Learning Rate</label>
+              <input type="number" step="0.00001" id="learning_rate" data-bind="learning_rate" placeholder="0.0003" />
+            </div>
+            <div class="form-group flex-1">
+              <label>LR Scheduler</label>
+              <select id="learning_rate_scheduler" data-bind="learning_rate_scheduler">
+                <option value="COSINE">Cosine with Restarts</option>
+                <option value="CONSTANT">Constant</option>
+                <option value="CONSTANT_WITH_WARMUP">Constant with Warmup</option>
+                <option value="LINEAR">Linear Decay</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label>Warmup Steps</label>
+              <input type="number" id="learning_rate_warmup_steps" data-bind="learning_rate_warmup_steps" placeholder="50" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label>Epochs</label>
+              <input type="number" id="epochs" data-bind="epochs" placeholder="10" />
+            </div>
+            <div class="form-group flex-1">
+              <label>Max Steps (0 = by epochs)</label>
+              <input type="number" id="max_steps" data-bind="max_steps" placeholder="0" />
+            </div>
+            <div class="form-group flex-1">
+              <label>Batch Size</label>
+              <input type="number" id="batch_size" data-bind="batch_size" placeholder="1" />
+            </div>
+            <div class="form-group flex-1">
+              <label>Gradient Accumulation</label>
+              <input type="number" id="gradient_accumulation_steps" data-bind="gradient_accumulation_steps" placeholder="1" />
+            </div>
+          </div>
+
+          <div class="form-row mt-2">
+            <div class="form-group flex-checkbox">
+              <label class="switch-label">
+                <input type="checkbox" id="gradient_checkpointing" data-bind="gradient_checkpointing" checked />
+                <span>Gradient Checkpointing (Saves massive VRAM)</span>
+              </label>
+            </div>
+            <div class="form-group flex-checkbox">
+              <label class="switch-label">
+                <input type="checkbox" id="compile" data-bind="compile" />
+                <span>torch.compile & Triton acceleration</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Optimizer Selection & Advanced Loss</div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label>Optimizer</label>
+              <select id="optimizer" data-bind="optimizer.optimizer">
+                <option value="ADAMW">AdamW</option>
+                <option value="ADAMW_8BIT">AdamW 8-Bit (BitsAndBytes)</option>
+                <option value="MUON">Muon (Fast Momentum Orthogonal)</option>
+                <option value="PRODIGY">Prodigy (Adaptive D-Adaptation)</option>
+                <option value="SCHEDULE_FREE_ADAMW">Schedule-Free AdamW</option>
+                <option value="D_ADAPTATION_ADAM">D-Adaptation Adam</option>
+                <option value="LION">Lion</option>
+                <option value="LION_8BIT">Lion 8-Bit</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label>Weight Decay</label>
+              <input type="number" step="0.0001" id="weight_decay" data-bind="optimizer.weight_decay" placeholder="0.01" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label>Timestep Distribution</label>
+              <select id="timestep_distribution" data-bind="timestep_distribution">
+                <option value="UNIFORM">Uniform</option>
+                <option value="SIGMOID">Sigmoid (Focus Mid-steps)</option>
+                <option value="LOGIT_NORMAL">Logit-Normal (Flux Standard)</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label>Rescale Noise Scheduler</label>
+              <select id="rescale_noise_scheduler" data-bind="rescale_noise_scheduler">
+                <option value="NONE">None</option>
+                <option value="TERMINAL_SNR">Zero Terminal SNR</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label>Backup Interval (Minutes / Epochs)</label>
+              <input type="number" id="backup_after" data-bind="backup_after" placeholder="30" />
+            </div>
+            <div class="form-group flex-1">
+              <label>Save Periodic Checkpoint Every (Epochs)</label>
+              <input type="number" id="save_every" data-bind="save_every" placeholder="1" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. DATASET & CONCEPTS TAB -->
+    <section id="conceptsTab" class="tab-pane">
+      <div class="concepts-header">
+        <div>
+          <h2>Training Concepts & Datasets</h2>
+          <p class="help-text">Configure image folders, captions, aspect ratio bucketing, and mask datasets.</p>
+        </div>
+        <button id="btnAddConcept" class="btn btn-accent">+ Add New Concept</button>
+      </div>
+      <div id="conceptsList" class="concept-cards-container">
+        <!-- Dynamically rendered concept cards -->
+      </div>
+    </section>
+
+    <!-- 4. SAMPLING TAB -->
+    <section id="samplingTab" class="tab-pane">
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-title">Inference Sampling Prompts & Schedule</div>
+          <div class="form-group">
+            <label>Sample Prompts (One prompt per line)</label>
+            <textarea id="sample_prompts" rows="6" placeholder="masterpiece, best quality, a photo of a cyberpunk city at sunset&#10;portrait photo of a woman in autumn leaves"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Negative Prompt</label>
+            <input type="text" id="sample_negative_prompt" placeholder="ugly, deformed, blurry, bad anatomy, low quality" />
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label>Sample Steps</label>
+              <input type="number" id="sample_steps" placeholder="28" value="28" />
+            </div>
+            <div class="form-group flex-1">
+              <label>CFG Scale / Guidance</label>
+              <input type="number" step="0.5" id="sample_guidance" placeholder="3.5" value="3.5" />
+            </div>
+            <div class="form-group flex-1">
+              <label>Resolution (W x H)</label>
+              <input type="text" id="sample_resolution" placeholder="1024x1024" value="1024x1024" />
+            </div>
+            <div class="form-group flex-1">
+              <label>Sample Every N Steps</label>
+              <input type="number" id="sample_every_steps" placeholder="100" value="100" />
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Live Sample Preview Gallery</div>
+          <div id="sampleGallery" class="sample-gallery-grid">
+            <div class="empty-placeholder">Generated samples during training will appear here live in real-time.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. LORA SETTINGS TAB -->
+    <section id="loraTab" class="tab-pane">
+      <div class="card max-w-3xl">
+        <div class="card-title">LoRA / LoCon / LoHA Network Hyperparameters</div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Network Dimension / Rank (dim)</label>
+            <input type="number" id="lora_rank" data-bind="lora.rank" placeholder="16" />
+            <small class="help-text">Higher rank increases capacity (e.g. 16 for styles/characters, 32-64 for complex concepts).</small>
+          </div>
+          <div class="form-group flex-1">
+            <label>Network Alpha (Scaling)</label>
+            <input type="number" id="lora_alpha" data-bind="lora.alpha" placeholder="16" />
+            <small class="help-text">Alpha scales the gradient update. Setting alpha = rank keeps 1.0 weight scale.</small>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Network Dropout (0.0 to 1.0)</label>
+            <input type="number" step="0.05" id="lora_dropout" data-bind="lora.dropout" placeholder="0.0" />
+          </div>
+          <div class="form-group flex-1">
+            <label>Network Module Type</label>
+            <select id="lora_type" data-bind="lora.type">
+              <option value="LORA">Standard LoRA</option>
+              <option value="LOCON">LoCon (Conv2D Included)</option>
+              <option value="LOHA">LoHA (Hadamard Product)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. LIVE DASHBOARD & LOGS TAB -->
+    <section id="dashboardTab" class="tab-pane">
+      <div class="card-grid">
+        <div class="card flex-2">
+          <div class="card-title">Real-Time Training Loss Curve</div>
+          <div class="chart-container">
+            <canvas id="lossChart"></canvas>
+          </div>
+        </div>
+
+        <div class="card flex-1">
+          <div class="card-title">System & GPU Resource Monitor</div>
+          <div class="resource-metrics" id="gpuMetrics">
+            <div class="metric-row">
+              <span>GPU Model:</span>
+              <strong id="gpuName">Probing...</strong>
+            </div>
+            <div class="metric-row">
+              <span>VRAM Allocated:</span>
+              <strong id="gpuAllocated">0.0 GB</strong>
+            </div>
+            <div class="metric-row">
+              <span>VRAM Reserved:</span>
+              <strong id="gpuReserved">0.0 GB</strong>
+            </div>
+            <div class="metric-row">
+              <span>Total VRAM:</span>
+              <strong id="gpuTotal">0.0 GB</strong>
+            </div>
+          </div>
+          <div class="card-title mt-4">Live Training Console Logs</div>
+          <div id="logTerminal" class="log-terminal"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modals for Save/Load Config -->
+  <div id="modalOverlay" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modalTitle">Save / Load Configuration</h3>
+        <button id="modalClose" class="modal-close-btn">&times;</button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

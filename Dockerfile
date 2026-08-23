@@ -1,7 +1,7 @@
 # =============================================================================
 # OneTrainer-Ultimate — Linux x86_64 / Python 3.12 / CUDA 12.8 / PyTorch cu128
-# RunPod-optimized with Web noVNC Desktop GUI, JupyterLab, FileBrowser,
-# TensorBoard, FlashAttention-2, bitsandbytes, and persistent /workspace wiring.
+# RunPod-optimized with Native WebUI, JupyterLab, FileBrowser, TensorBoard,
+# FlashAttention-2, bitsandbytes, and persistent /workspace volume wiring.
 # =============================================================================
 FROM nvidia/cuda:12.8.0-cudnn-devel-ubuntu22.04
 
@@ -16,28 +16,19 @@ ENV DEBIAN_FRONTEND=noninteractive \
     MPLBACKEND=Agg \
     HF_HUB_DISABLE_TELEMETRY=1 \
     HF_HUB_ENABLE_HF_TRANSFER=1 \
-    QT_QPA_PLATFORM=xcb \
-    QT_X11_NO_MITSHM=1 \
-    DISPLAY=:1 \
-    VNC_RESOLUTION=1920x1080
+    PORT=8080
 
-# ---- 1. System Dependencies (Python 3.12 + X11/noVNC + Build Tools + SSH) ----
+# ---- 1. System Dependencies (Python 3.12 + Build Tools + SSH) ----
 RUN apt-get update && apt-get install -y --no-install-recommends \
       software-properties-common gnupg ca-certificates curl \
  && add-apt-repository -y ppa:deadsnakes/ppa \
  && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
  && apt-get update && apt-get install -y --no-install-recommends \
-      python3.12 python3.12-venv python3.12-dev python3-tk \
+      python3.12 python3.12-venv python3.12-dev \
       git git-lfs aria2 wget \
       ffmpeg libsndfile1 libglib2.0-0 libgomp1 libgl1 \
       build-essential ninja-build \
-      openssh-server \
-      xvfb x11vnc openbox novnc websockify xterm \
-      dbus-x11 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
-      libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-sync1 \
-      libxcb-xfixes0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0 \
-      libxkbcommon0 libfontconfig1 fonts-dejavu-core fonts-freefont-ttf \
-      x11-xserver-utils x11-utils procps \
+      openssh-server procps \
  && apt-get install -y --only-upgrade libstdc++6 \
  && { strings /usr/lib/x86_64-linux-gnu/libstdc++.so.6 | grep -q GLIBCXX_3.4.32 \
       && echo "libstdc++ provides GLIBCXX_3.4.32 OK" \
@@ -86,16 +77,16 @@ RUN bash -c '\
     rm -rf /tmp/sage; \
   fi'
 
-# ---- 5. Pre-bake Core ML Ecosystem & Optimizers ----
+# ---- 5. Pre-bake Core ML Ecosystem, Web Framework & Optimizers ----
 RUN uv pip install --no-cache \
+      fastapi uvicorn websockets \
       numpy scipy matplotlib pillow \
       transformers tokenizers huggingface-hub hf_transfer accelerate safetensors peft \
       sentencepiece open-clip-torch gguf onnxruntime-gpu \
       bitsandbytes dadaptation lion-pytorch prodigyopt schedulefree \
       pytorch_optimizer prodigy-plus-schedule-free adv_optm \
       tensorboard jupyterlab nvitop psutil requests deepdiff \
-      av scenedetect parse yt-dlp pooch imagesize \
-      customtkinter PySide6
+      av scenedetect parse yt-dlp pooch imagesize
 
 # Install Muon optimizer
 RUN pip install --no-cache-dir git+https://github.com/KellerJordan/Muon.git@f90a42b
@@ -108,20 +99,20 @@ WORKDIR /OneTrainer
 RUN pip install --no-cache-dir git+https://github.com/huggingface/diffusers.git@1ffa423 \
  && pip install --no-cache-dir git+https://github.com/Nerogar/mgds.git@3a6994a
 
+# Install WebUI Package into /OneTrainer/webui
+COPY webui /OneTrainer/webui
+COPY webui /opt/webui
+
 # ---- 7. FileBrowser (pinned v2.31.2 binary) ----
 RUN curl -fsSL https://github.com/filebrowser/filebrowser/releases/download/v2.31.2/linux-amd64-filebrowser.tar.gz -o /tmp/fb.tgz \
  && tar -xzf /tmp/fb.tgz -C /usr/local/bin filebrowser \
  && chmod +x /usr/local/bin/filebrowser && rm -f /tmp/fb.tgz \
  && /usr/local/bin/filebrowser version
 
-# ---- 8. noVNC HTML Auto-connect Page Setup ----
-RUN ln -sf /usr/share/novnc/vnc.html /usr/share/novnc/index.html \
- && sed -i 's/autoconnect: false/autoconnect: true/' /usr/share/novnc/app/ui.js 2>/dev/null || true
+# ---- 8. Smoke Test Gate ----
+RUN python -c "from modules.util.config.TrainConfig import TrainConfig; print('OneTrainer core OK'); from webui.server import app; print('WebUI App OK')"
 
-# ---- 9. Smoke Test Gate ----
-RUN python /opt/scripts/smoke_test.py
-
-# ---- 10. Ports & Entrypoint ----
-EXPOSE 8080 8888 8081 6006 22 5900
+# ---- 9. Ports & Entrypoint ----
+EXPOSE 8080 8888 8081 6006 22
 WORKDIR /OneTrainer
 ENTRYPOINT ["/opt/scripts/start.sh"]
