@@ -43,7 +43,7 @@
 
     <div class="header-right">
       <select id="presetSelect" class="select-preset">
-        <option value="" disabled selected>⚡ Load Architecture Preset...</option>
+        <option value="" disabled selected>⚡ All Architecture Presets (60+)...</option>
       </select>
       <button id="btnModelHub" class="btn btn-secondary">📥 Model Hub</button>
       <button id="btnSaveConfig" class="btn btn-secondary">💾 Save Config</button>
@@ -53,6 +53,14 @@
       <button id="btnStartTraining" class="btn btn-primary">▶ Start Training</button>
     </div>
   </header>
+
+  <!-- Architecture Dynamic Quick-Presets Bar -->
+  <div class="quick-preset-banner" id="quickPresetBanner">
+    <span class="banner-title" id="activeArchLabel">Selected Architecture:</span>
+    <div class="preset-pill-group" id="archPresetPills">
+      <!-- Dynamically populated with authentic OneTrainer presets for the active model -->
+    </div>
+  </div>
 
   <!-- Main Navigation Tabs -->
   <nav class="app-tabs">
@@ -142,19 +150,19 @@
         <div class="card">
           <div class="card-title">Precision & Component Weights Dtypes</div>
           <div class="form-row">
-            <div class="form-group flex-1">
+            <div class="form-group flex-1" id="transformerDtypeGroup">
               <label>Transformer Weight Dtype</label>
               <select id="transformer_dtype" data-bind="transformer.weight_dtype">
                 <option value="INT_W8A8">int W8A8 (Recommended for Krea 2 / Low VRAM)</option>
                 <option value="FLOAT_W8A8">float W8A8</option>
-                <option value="BFLOAT_16">bfloat16</option>
+                <option value="BFLOAT_16">bfloat16 (Full Precision)</option>
                 <option value="FLOAT_16">float16</option>
                 <option value="FLOAT_8">float8 (W8)</option>
                 <option value="FLOAT_32">float32</option>
                 <option value="NFLOAT_4">nfloat4</option>
               </select>
             </div>
-            <div class="form-group flex-1">
+            <div class="form-group flex-1" id="unetDtypeGroup">
               <label>UNet Weight Dtype</label>
               <select id="unet_dtype" data-bind="unet.weight_dtype">
                 <option value="FLOAT_16">float16</option>
@@ -176,7 +184,7 @@
                 <option value="FLOAT_32">float32</option>
               </select>
             </div>
-            <div class="form-group flex-1">
+            <div class="form-group flex-1" id="te2DtypeGroup">
               <label>Text Encoder 2 (T5 / CLIP-G) Dtype</label>
               <select id="te2_dtype" data-bind="text_encoder_2.weight_dtype">
                 <option value="BFLOAT_16">bfloat16</option>
@@ -196,9 +204,9 @@
                 <option value="FLOAT_16">float16</option>
               </select>
             </div>
-            <div class="form-group flex-1">
+            <div class="form-group flex-1" id="transformerOffloadGroup">
               <label>Transformer Offload Fraction (0.0 to 1.0)</label>
-              <input type="number" step="0.05" id="transformer_offload" data-bind="transformer.offload_fraction" placeholder="0.3" />
+              <input type="number" step="0.05" id="transformer_offload" data-bind="transformer.offload_fraction" placeholder="0.0" />
             </div>
           </div>
 
@@ -219,6 +227,7 @@
                 <option value="DIFFUSERS">Diffusers Format</option>
                 <option value="STANDARD">Standard Weights</option>
                 <option value="ORIGINAL_TRANSFORMER">Original Transformer</option>
+                <option value="COMFY_LORA">Comfy LoRA (Hunyuan / Ideogram)</option>
               </select>
             </div>
           </div>
@@ -228,14 +237,6 @@
 
     <!-- 2. TRAINING & OPTIMIZER TAB -->
     <section id="trainingTab" class="tab-pane">
-      <!-- VRAM Auto-Tune Profile Toolbar -->
-      <div class="vram-profile-bar">
-        <span class="vram-label">⚡ 1-Click Hardware Optimizer:</span>
-        <button class="btn btn-secondary btn-vram" onclick="applyVRAMProfile(12)">12 GB VRAM</button>
-        <button class="btn btn-secondary btn-vram" onclick="applyVRAMProfile(16)">16 GB VRAM (Recommended)</button>
-        <button class="btn btn-secondary btn-vram" onclick="applyVRAMProfile(24)">24 GB+ VRAM (Full Speed)</button>
-      </div>
-
       <div class="card-grid">
         <div class="card">
           <div class="card-title">Training Method & Hyperparameters</div>
@@ -289,7 +290,7 @@
             </div>
             <div class="form-group flex-1">
               <label>Batch Size</label>
-              <input type="number" id="batch_size" data-bind="batch_size" placeholder="1" />
+              <input type="number" id="batch_size" data-bind="batch_size" placeholder="2" />
             </div>
             <div class="form-group flex-1">
               <label>Gradient Accumulation</label>
@@ -306,7 +307,7 @@
             </div>
             <div class="form-group flex-checkbox">
               <label class="switch-label">
-                <input type="checkbox" id="compile" data-bind="compile" />
+                <input type="checkbox" id="compile" data-bind="compile" checked />
                 <span>torch.compile & Triton acceleration</span>
               </label>
             </div>
@@ -391,7 +392,7 @@
           <div class="card-title">Inference Sampling Prompts & Schedule</div>
           <div class="form-group">
             <label>Sample Prompts (One prompt per line)</label>
-            <textarea id="sample_prompts" rows="6" placeholder="masterpiece, best quality, a photo of a cyberpunk city at sunset&#10;portrait photo of a woman in autumn leaves"></textarea>
+            <textarea id="sample_prompts" rows="6" placeholder="masterpiece, best quality, a photo of a cyberpunk character in neon city rain"></textarea>
           </div>
           <div class="form-group">
             <label>Negative Prompt</label>
@@ -408,7 +409,7 @@
             </div>
             <div class="form-group flex-1">
               <label>Resolution (W x H)</label>
-              <input type="text" id="sample_resolution" placeholder="1024x1024" value="1024x1024" />
+              <input type="text" id="sample_resolution" placeholder="512x512" value="512x512" />
             </div>
             <div class="form-group flex-1">
               <label>Sample Every N Steps</label>

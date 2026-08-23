@@ -1,259 +1,154 @@
-// Architecture metadata map with official base repos, resolutions, formats, and DiT vs UNet flags
-const ARCHITECTURE_DEFAULTS = {
+// OneTrainer WebUI Application State & Realtime Sync
+
+const ARCHITECTURE_METADATA = {
   KREA_2: {
+    category: "Krea 2",
     base_model: "krea/Krea-2-Raw",
     resolution: "512",
     format: "DIFFUSERS_LORA",
     is_dit: true,
     has_te2: false,
-    transformer_dtype: "INT_W8A8",
-    te_dtype: "FLOAT_8",
-    timestep_distribution: "LOGIT_NORMAL",
     sample_prompt: "masterpiece, highly detailed 8k portrait of a cyberpunk character in neon city rain\ncinematic wide shot of a futuristic landscape at golden hour, sharp focus"
   },
   FLUX_DEV_1: {
+    category: "Flux Dev.1",
     base_model: "black-forest-labs/FLUX.1-dev",
     resolution: "1024",
     format: "DIFFUSERS_LORA",
     is_dit: true,
     has_te2: true,
-    transformer_dtype: "INT_W8A8",
-    te_dtype: "FLOAT_16",
-    te2_dtype: "FLOAT_8",
-    timestep_distribution: "LOGIT_NORMAL",
     sample_prompt: "photo of a serene woman walking in an autumn forest, golden hour lighting, 8k uhd, dslr, natural skin texture\na vibrant street market at night with neon lights and reflections on wet asphalt"
   },
   FLUX_1_SCHNELL: {
+    category: "Flux Dev.1",
     base_model: "black-forest-labs/FLUX.1-schnell",
     resolution: "1024",
     format: "DIFFUSERS_LORA",
     is_dit: true,
     has_te2: true,
-    transformer_dtype: "INT_W8A8",
-    te_dtype: "FLOAT_16",
-    te2_dtype: "FLOAT_8",
-    timestep_distribution: "LOGIT_NORMAL",
     sample_prompt: "a majestic eagle flying over snow-covered mountains, highly detailed, dramatic lighting"
   },
-  FLUX_FILL_DEV_1: {
-    base_model: "black-forest-labs/FLUX.1-Fill-dev",
-    resolution: "1024",
-    format: "DIFFUSERS_LORA",
-    is_dit: true,
-    has_te2: true,
-    transformer_dtype: "INT_W8A8",
-    te_dtype: "FLOAT_16",
-    te2_dtype: "FLOAT_8",
-    timestep_distribution: "LOGIT_NORMAL",
-    sample_prompt: "a high quality inpainting sample, seamless blend, photographic"
-  },
   FLUX_2: {
+    category: "Flux 2",
     base_model: "black-forest-labs/FLUX.2-dev",
     resolution: "1024",
     format: "DIFFUSERS_LORA",
     is_dit: true,
     has_te2: true,
-    transformer_dtype: "INT_W8A8",
-    te_dtype: "FLOAT_16",
-    te2_dtype: "FLOAT_8",
-    timestep_distribution: "LOGIT_NORMAL",
     sample_prompt: "ultra detailed cinematic portrait, 8k resolution, subsurface scattering"
   },
   STABLE_DIFFUSION_XL_10_BASE: {
+    category: "SDXL",
     base_model: "stabilityai/stable-diffusion-xl-base-1.0",
     resolution: "1024",
     format: "KOHYA_LORA",
     is_dit: false,
     has_te2: true,
-    unet_dtype: "FLOAT_16",
-    te_dtype: "FLOAT_16",
-    te2_dtype: "FLOAT_16",
-    timestep_distribution: "UNIFORM",
     sample_prompt: "masterpiece, best quality, portrait of a warrior with ornate armor, cinematic lighting, photorealistic\na cozy cabin in the woods during a winter snowfall, warm light from windows"
   },
-  STABLE_DIFFUSION_XL_10_BASE_INPAINTING: {
-    base_model: "diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
-    resolution: "1024",
-    format: "KOHYA_LORA",
-    is_dit: false,
-    has_te2: true,
-    unet_dtype: "FLOAT_16",
-    te_dtype: "FLOAT_16",
-    te2_dtype: "FLOAT_16",
-    timestep_distribution: "UNIFORM",
-    sample_prompt: "masterpiece, seamless inpaint portrait, 8k"
-  },
   STABLE_DIFFUSION_15: {
+    category: "SD1.5",
     base_model: "runwayml/stable-diffusion-v1-5",
     resolution: "512",
     format: "KOHYA_LORA",
     is_dit: false,
     has_te2: false,
-    unet_dtype: "FLOAT_16",
-    te_dtype: "FLOAT_16",
-    timestep_distribution: "UNIFORM",
     sample_prompt: "masterpiece, best quality, 1girl, solo, looking at viewer, detailed eyes, cinematic lighting\na fantasy castle surrounded by glowing floating crystals, digital painting"
   },
-  STABLE_DIFFUSION_15_INPAINTING: {
-    base_model: "runwayml/stable-diffusion-inpainting",
-    resolution: "512",
-    format: "KOHYA_LORA",
-    is_dit: false,
-    has_te2: false,
-    unet_dtype: "FLOAT_16",
-    te_dtype: "FLOAT_16",
-    timestep_distribution: "UNIFORM",
-    sample_prompt: "masterpiece, 1girl inpainting, highly detailed"
-  },
-  STABLE_DIFFUSION_21: {
-    base_model: "stabilityai/stable-diffusion-2-1",
-    resolution: "768",
-    format: "KOHYA_LORA",
-    is_dit: false,
-    has_te2: false,
-    unet_dtype: "FLOAT_16",
-    te_dtype: "FLOAT_16",
-    timestep_distribution: "UNIFORM",
-    sample_prompt: "a photograph of an astronaut riding a horse on mars, photorealistic"
-  },
-  STABLE_DIFFUSION_20: {
-    base_model: "stabilityai/stable-diffusion-2",
-    resolution: "768",
-    format: "KOHYA_LORA",
-    is_dit: false,
-    has_te2: false,
-    unet_dtype: "FLOAT_16",
-    te_dtype: "FLOAT_16",
-    timestep_distribution: "UNIFORM",
-    sample_prompt: "a stunning view of the northern lights above a frozen lake"
-  },
   STABLE_DIFFUSION_3: {
+    category: "SD3",
     base_model: "stabilityai/stable-diffusion-3-medium-diffusers",
     resolution: "1024",
     format: "DIFFUSERS_LORA",
     is_dit: true,
     has_te2: true,
-    transformer_dtype: "FLOAT_16",
-    te_dtype: "FLOAT_16",
-    te2_dtype: "FLOAT_8",
-    timestep_distribution: "LOGIT_NORMAL",
     sample_prompt: "a close up portrait of a futuristic astronaut with reflections in the visor, high detail, 8k"
   },
   STABLE_DIFFUSION_35: {
+    category: "SD3",
     base_model: "stabilityai/stable-diffusion-3.5-large",
     resolution: "1024",
     format: "DIFFUSERS_LORA",
     is_dit: true,
     has_te2: true,
-    transformer_dtype: "INT_W8A8",
-    te_dtype: "FLOAT_16",
-    te2_dtype: "FLOAT_8",
-    timestep_distribution: "LOGIT_NORMAL",
     sample_prompt: "a close up portrait of a futuristic astronaut with reflections in the visor, high detail, 8k"
   },
   SANA: {
+    category: "Sana",
     base_model: "Efficient-Large-Model/Sana_1600M_1024px",
     resolution: "1024",
     format: "DIFFUSERS_LORA",
     is_dit: true,
     has_te2: false,
-    transformer_dtype: "BFLOAT_16",
-    te_dtype: "BFLOAT_16",
-    timestep_distribution: "LOGIT_NORMAL",
     sample_prompt: "artistic digital illustration of an enchanted forest with bioluminescent mushrooms, vibrant colors"
   },
   HUNYUAN_VIDEO: {
+    category: "Hunyuan Video",
     base_model: "tencent/HunyuanVideo",
     resolution: "720",
-    format: "DIFFUSERS_LORA",
+    format: "COMFY_LORA",
     is_dit: true,
     has_te2: true,
-    transformer_dtype: "INT_W8A8",
-    te_dtype: "FLOAT_16",
-    te2_dtype: "FLOAT_8",
-    timestep_distribution: "LOGIT_NORMAL",
     sample_prompt: "a cinematic drone shot moving through a mountain valley with waterfalls, golden sunlight"
   },
   QWEN: {
+    category: "QwenImage",
     base_model: "Qwen/Qwen2-VL-7B-Instruct",
     resolution: "1024",
     format: "DIFFUSERS_LORA",
     is_dit: true,
     has_te2: false,
-    transformer_dtype: "INT_W8A8",
-    te_dtype: "FLOAT_8",
-    timestep_distribution: "LOGIT_NORMAL",
     sample_prompt: "a high quality portrait of a student in a library reading a book, soft lighting"
   },
   ANIMA: {
+    category: "Anima",
     base_model: "cirno-ai/Anima-7B",
     resolution: "1024",
-    format: "DIFFUSERS_LORA",
+    format: "KOHYA_LORA",
     is_dit: true,
     has_te2: false,
-    transformer_dtype: "INT_W8A8",
-    te_dtype: "FLOAT_8",
-    timestep_distribution: "LOGIT_NORMAL",
     sample_prompt: "masterpiece anime style illustration of a magical girl with glowing staff"
   },
   Z_IMAGE: {
+    category: "Z-Image",
     base_model: "Z-Image-Ai/Z-Image",
     resolution: "1024",
     format: "DIFFUSERS_LORA",
     is_dit: true,
     has_te2: false,
-    transformer_dtype: "INT_W8A8",
-    te_dtype: "FLOAT_8",
-    timestep_distribution: "LOGIT_NORMAL",
     sample_prompt: "stunning high-res landscape photograph with mountain range and clear reflection"
   },
-  PIXART_SIGMA: {
-    base_model: "PixArt-alpha/PixArt-Sigma-XL-2-1024-MS",
+  CHROMA_1: {
+    category: "Chroma",
+    base_model: "lodestones/Chroma-Radiant",
     resolution: "1024",
     format: "DIFFUSERS_LORA",
     is_dit: true,
     has_te2: false,
-    transformer_dtype: "FLOAT_16",
-    te_dtype: "FLOAT_16",
-    timestep_distribution: "LOGIT_NORMAL",
-    sample_prompt: "a detailed digital artwork of a mythical creature in a misty valley"
+    sample_prompt: "a vibrant sci-fi illustration with volumetric lighting and intense color grading"
   },
-  PIXART_ALPHA: {
-    base_model: "PixArt-alpha/PixArt-XL-2-1024-MS",
+  ERNIE: {
+    category: "Ernie Image",
+    base_model: "baidu/Ernie-Image",
     resolution: "1024",
     format: "DIFFUSERS_LORA",
     is_dit: true,
     has_te2: false,
-    transformer_dtype: "FLOAT_16",
-    te_dtype: "FLOAT_16",
-    timestep_distribution: "UNIFORM",
-    sample_prompt: "a majestic mountain landscape at sunrise, 8k wallpaper"
+    sample_prompt: "a detailed digital illustration of traditional Chinese architecture surrounded by pine trees"
   },
-  STABLE_CASCADE_1: {
-    base_model: "stabilityai/stable-cascade",
+  IDEOGRAM_4: {
+    category: "Ideogram 4",
+    base_model: "ideogram-ai/ideogram-v4",
     resolution: "1024",
-    format: "DIFFUSERS_LORA",
-    is_dit: false,
+    format: "COMFY_LORA",
+    is_dit: true,
     has_te2: false,
-    unet_dtype: "FLOAT_16",
-    te_dtype: "FLOAT_16",
-    timestep_distribution: "UNIFORM",
-    sample_prompt: "an intricate steampunk clockwork mechanism with brass gears and steam"
-  },
-  WUERSTCHEN_2: {
-    base_model: "warp-ai/wuerstchen",
-    resolution: "1024",
-    format: "DIFFUSERS_LORA",
-    is_dit: false,
-    has_te2: false,
-    unet_dtype: "FLOAT_16",
-    te_dtype: "FLOAT_16",
-    timestep_distribution: "UNIFORM",
-    sample_prompt: "a vibrant impressionist oil painting of a bustling harbor in summer"
+    sample_prompt: "a vintage typography poster with intricate letterforms and distressed paper texture"
   }
 };
 
 let currentConfig = {};
+let allPresets = {};
 let isTraining = false;
 let lossChart = null;
 let ws = null;
@@ -309,51 +204,35 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-// Update UI visibility and defaults when Model Architecture changes
-function applyArchitectureDefaults(archType) {
-  const meta = ARCHITECTURE_DEFAULTS[archType];
-  if (!meta) return;
+// Update UI visibility and render quick preset buttons for active architecture
+function updateArchitectureUI(archType) {
+  const meta = ARCHITECTURE_METADATA[archType] || {};
+  const cat = meta.category || archType;
 
-  // 1. Auto-update Base Model Path
-  const baseModelInput = document.getElementById('base_model_name');
-  if (baseModelInput) {
-    baseModelInput.value = meta.base_model;
-    setNestedValue(currentConfig, 'base_model_name', meta.base_model);
+  document.getElementById('activeArchLabel').textContent = `${archType} Presets:`;
+
+  // Render authentic OneTrainer presets for this architecture
+  const pillsContainer = document.getElementById('archPresetPills');
+  pillsContainer.innerHTML = '';
+
+  const presetsForCat = allPresets[cat] || [];
+  if (presetsForCat.length > 0) {
+    presetsForCat.forEach(p => {
+      const btn = document.createElement('button');
+      btn.className = 'preset-pill-btn';
+      btn.textContent = `⚡ ${p.name}`;
+      btn.onclick = () => loadPresetFile(p.category, p.filename);
+      pillsContainer.appendChild(btn);
+    });
+  } else {
+    pillsContainer.innerHTML = '<span style="font-size: 12px; color: #9ca3af;">Custom architecture configuration</span>';
   }
 
-  // 2. Auto-update Output Format
-  const outputFormatSelect = document.getElementById('output_model_format');
-  if (outputFormatSelect && meta.format) {
-    outputFormatSelect.value = meta.format;
-    setNestedValue(currentConfig, 'output_model_format', meta.format);
-  }
-
-  // 3. Auto-update Output Destination Filename
-  const destInput = document.getElementById('output_model_destination');
-  if (destInput) {
-    const safeArch = archType.toLowerCase().replace(/\s+/g, '_');
-    const defaultDest = `output/${safeArch}_lora.safetensors`;
-    destInput.value = defaultDest;
-    setNestedValue(currentConfig, 'output_model_destination', defaultDest);
-  }
-
-  // 4. Auto-update Timestep Distribution
-  const distSelect = document.getElementById('timestep_distribution');
-  if (distSelect && meta.timestep_distribution) {
-    distSelect.value = meta.timestep_distribution;
-    setNestedValue(currentConfig, 'timestep_distribution', meta.timestep_distribution);
-  }
-
-  // 5. Auto-update Sample Prompt
-  const sampleTextArea = document.getElementById('sample_prompts');
-  if (sampleTextArea && meta.sample_prompt) {
-    sampleTextArea.value = meta.sample_prompt;
-  }
-
-  // 6. Dynamic Visibility: DiT (Transformer) vs UNet fields
-  const transformerField = document.getElementById('transformer_dtype')?.closest('.form-group');
-  const unetField = document.getElementById('unet_dtype')?.closest('.form-group');
-  const offloadField = document.getElementById('transformer_offload')?.closest('.form-group');
+  // Dynamic Visibility: DiT (Transformer) vs UNet fields
+  const transformerField = document.getElementById('transformerDtypeGroup');
+  const unetField = document.getElementById('unetDtypeGroup');
+  const offloadField = document.getElementById('transformerOffloadGroup');
+  const te2Field = document.getElementById('te2DtypeGroup');
 
   if (meta.is_dit) {
     if (transformerField) transformerField.style.display = 'flex';
@@ -365,8 +244,6 @@ function applyArchitectureDefaults(archType) {
     if (unetField) unetField.style.display = 'flex';
   }
 
-  // 7. Update Text Encoder 2 visibility
-  const te2Field = document.getElementById('te2_dtype')?.closest('.form-group');
   if (te2Field) {
     te2Field.style.display = meta.has_te2 ? 'flex' : 'none';
   }
@@ -375,7 +252,21 @@ function applyArchitectureDefaults(archType) {
 // Listen to Model Architecture dropdown changes
 document.getElementById('model_type').addEventListener('change', (e) => {
   const chosenArch = e.target.value;
-  applyArchitectureDefaults(chosenArch);
+  const meta = ARCHITECTURE_METADATA[chosenArch];
+  if (meta) {
+    // If there is a preset for this architecture, load the first one (e.g. LoRA 16GB)
+    const presetsForCat = allPresets[meta.category] || [];
+    if (presetsForCat.length > 0) {
+      loadPresetFile(presetsForCat[0].category, presetsForCat[0].filename);
+    } else {
+      document.getElementById('base_model_name').value = meta.base_model || '';
+      document.getElementById('output_model_format').value = meta.format || 'DIFFUSERS_LORA';
+      if (meta.sample_prompt) document.getElementById('sample_prompts').value = meta.sample_prompt;
+      updateArchitectureUI(chosenArch);
+    }
+  } else {
+    updateArchitectureUI(chosenArch);
+  }
 });
 
 // WebSocket Connection
@@ -485,7 +376,7 @@ async function fetchConfig() {
     currentConfig = await res.json();
     populateForm(currentConfig);
     if (currentConfig.model_type) {
-      applyArchitectureDefaults(currentConfig.model_type);
+      updateArchitectureUI(currentConfig.model_type);
     }
     renderConcepts(currentConfig.concepts || []);
   } catch (e) {
@@ -511,7 +402,7 @@ function populateForm(config) {
   document.querySelectorAll('[data-bind]').forEach(input => {
     const path = input.getAttribute('data-bind');
     const val = getNestedValue(config, path);
-    if (val !== undefined) {
+    if (val !== undefined && val !== null) {
       if (input.type === 'checkbox') {
         input.checked = Boolean(val);
       } else {
@@ -639,26 +530,48 @@ document.getElementById('btnAutoDetectDatasets').addEventListener('click', async
   }
 });
 
-// 1-Click VRAM Hardware Optimizer
-window.applyVRAMProfile = async function(vramGb) {
+// Load Preset File directly from backend
+window.loadPresetFile = async function(cat, file) {
   try {
-    syncFormToConfig();
-    const res = await fetch('/api/autotune_vram', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ vram_gb: vramGb })
-    });
+    const res = await fetch(`/api/preset/${encodeURIComponent(cat)}/${encodeURIComponent(file)}`);
     const data = await res.json();
     if (data.status === 'ok') {
       currentConfig = data.config;
+
+      // Smart Defaults & UI State sync
+      const modelType = currentConfig.model_type;
+      const meta = ARCHITECTURE_METADATA[modelType] || {};
+
+      // Populate forms
       populateForm(currentConfig);
-      if (currentConfig.model_type) {
-        applyArchitectureDefaults(currentConfig.model_type);
+
+      // Auto-name output destination if generic
+      if (!currentConfig.output_model_destination || currentConfig.output_model_destination.startsWith('models/')) {
+        const safeCat = cat.toLowerCase().replace(/\s+/g, '_');
+        const safeName = file.replace(/#/g, '').replace(/\.json/g, '').toLowerCase().replace(/\s+/g, '_');
+        const ext = currentConfig.output_model_format === 'KOHYA_LORA' || currentConfig.output_model_format === 'DIFFUSERS_LORA' || currentConfig.output_model_format === 'COMFY_LORA' ? 'safetensors' : 'safetensors';
+        const targetDest = `output/${safeCat}_${safeName}.${ext}`;
+        document.getElementById('output_model_destination').value = targetDest;
+        setNestedValue(currentConfig, 'output_model_destination', targetDest);
       }
-      alert(`⚡ Applied ${vramGb}GB VRAM training profile! Hyperparameters, quantization, and offloading adjusted.`);
+
+      // Sample Prompts
+      if (meta.sample_prompt) {
+        document.getElementById('sample_prompts').value = meta.sample_prompt;
+      }
+
+      updateArchitectureUI(modelType);
+      renderConcepts(currentConfig.concepts || []);
+
+      // Highlight active pill
+      document.querySelectorAll('.preset-pill-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.includes(file.replace(/#/g, '').replace(/\.json/g, '')));
+      });
+
+      alert(`✅ Loaded authentic OneTrainer preset: ${cat} (${file})\nTraining Method: ${currentConfig.training_method}\nLearning Rate: ${currentConfig.learning_rate}\nBatch Size: ${currentConfig.batch_size}`);
     }
-  } catch (e) {
-    alert(`Failed to apply VRAM profile: ${e}`);
+  } catch (err) {
+    alert(`Failed to load preset: ${err}`);
   }
 };
 
@@ -666,10 +579,10 @@ window.applyVRAMProfile = async function(vramGb) {
 async function fetchPresets() {
   try {
     const res = await fetch('/api/presets');
-    const presets = await res.json();
+    allPresets = await res.json();
     const select = document.getElementById('presetSelect');
-    select.innerHTML = '<option value="" disabled selected>⚡ Load Architecture Preset...</option>';
-    for (const [cat, list] of Object.entries(presets)) {
+    select.innerHTML = '<option value="" disabled selected>⚡ All Architecture Presets (60+)...</option>';
+    for (const [cat, list] of Object.entries(allPresets)) {
       const optGroup = document.createElement('optgroup');
       optGroup.label = cat;
       list.forEach(p => {
@@ -685,38 +598,11 @@ async function fetchPresets() {
   }
 }
 
-document.getElementById('presetSelect').addEventListener('change', async (e) => {
+document.getElementById('presetSelect').addEventListener('change', (e) => {
   const val = e.target.value;
   if (!val) return;
   const [cat, file] = val.split('/');
-  try {
-    const res = await fetch(`/api/preset/${cat}/${file}`);
-    const data = await res.json();
-    if (data.status === 'ok') {
-      currentConfig = data.config;
-
-      // Smart Defaults & UI State sync
-      const modelType = currentConfig.model_type;
-      if (modelType) {
-        applyArchitectureDefaults(modelType);
-      }
-
-      // Populate forms
-      populateForm(currentConfig);
-
-      // Auto-name output destination if default
-      const safeCat = cat.toLowerCase().replace(/\s+/g, '_');
-      const safeName = file.replace(/#/g, '').replace(/\.json/g, '').toLowerCase().replace(/\s+/g, '_');
-      const targetDest = `output/${safeCat}_${safeName}.safetensors`;
-      document.getElementById('output_model_destination').value = targetDest;
-      setNestedValue(currentConfig, 'output_model_destination', targetDest);
-
-      renderConcepts(currentConfig.concepts || []);
-      alert(`Loaded preset: ${cat} (${file})! All parameters, base model repo, and precision updated.`);
-    }
-  } catch (err) {
-    alert(`Failed to load preset: ${err}`);
-  }
+  loadPresetFile(cat, file);
 });
 
 // Interactive File / Folder Browser Modal
@@ -839,7 +725,7 @@ window.downloadModelHub = async function(repoId) {
 window.useModelInConfig = function(repoId, modelType) {
   document.getElementById('base_model_name').value = repoId;
   document.getElementById('model_type').value = modelType;
-  applyArchitectureDefaults(modelType);
+  updateArchitectureUI(modelType);
   syncFormToConfig();
   document.getElementById('modalOverlay').classList.add('hidden');
   alert(`Base model set to ${repoId} (${modelType})!`);
@@ -936,7 +822,7 @@ document.getElementById('btnLoadConfig').addEventListener('click', async () => {
       currentConfig = data.config;
       populateForm(currentConfig);
       if (currentConfig.model_type) {
-        applyArchitectureDefaults(currentConfig.model_type);
+        updateArchitectureUI(currentConfig.model_type);
       }
       renderConcepts(currentConfig.concepts || []);
       modalOverlay.classList.add('hidden');
@@ -949,6 +835,7 @@ document.getElementById('btnLoadConfig').addEventListener('click', async () => {
 window.addEventListener('DOMContentLoaded', () => {
   initLossChart();
   connectWebSocket();
-  fetchConfig();
-  fetchPresets();
+  fetchPresets().then(() => {
+    fetchConfig();
+  });
 });

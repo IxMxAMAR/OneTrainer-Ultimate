@@ -152,6 +152,55 @@ body {
   gap: 10px;
 }
 
+/* Quick Presets Banner */
+.quick-preset-banner {
+  background: #0f121d;
+  border-bottom: 1px solid var(--border-color);
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.banner-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #a855f7;
+  white-space: nowrap;
+}
+
+.preset-pill-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preset-pill-btn {
+  background: #1e2433;
+  color: #d1d5db;
+  border: 1px solid var(--border-color);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preset-pill-btn:hover {
+  background: var(--accent-primary);
+  color: #fff;
+  border-color: var(--accent-primary);
+}
+
+.preset-pill-btn.active {
+  background: var(--accent-primary);
+  color: #fff;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+}
+
 /* Buttons & Inputs */
 .btn {
   padding: 8px 16px;
@@ -205,29 +254,6 @@ body {
   outline: none;
 }
 .select-preset:focus { border-color: var(--border-focus); }
-
-/* VRAM Profile Bar */
-.vram-profile-bar {
-  background: #11141c;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  padding: 10px 16px;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.vram-label {
-  font-size: 13px;
-  font-weight: 700;
-  color: #a855f7;
-}
-
-.btn-vram {
-  font-size: 12px;
-  padding: 6px 12px;
-}
 
 /* Navigation Tabs */
 .app-tabs {
