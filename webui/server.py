@@ -74,6 +74,13 @@ def parse_train_config(data: Dict[str, Any]) -> TrainConfig:
     is_built_in = "__version" not in data
     cfg = default_cfg.from_dict(data, migrate=not is_built_in)
 
+    # Automatic safety defaults to prevent NaN gradient explosions and ensure checkpoints save
+    if cfg.clip_grad_norm is None or cfg.clip_grad_norm <= 0:
+        cfg.clip_grad_norm = 1.0
+
+    if cfg.save_every > 0 and (cfg.save_every_unit is None or cfg.save_every_unit == TimeUnit.NEVER):
+        cfg.save_every_unit = TimeUnit.EPOCH
+
     # Reconstruct and preserve concepts list
     concepts_raw = data.get("concepts")
     if concepts_raw and isinstance(concepts_raw, list):
