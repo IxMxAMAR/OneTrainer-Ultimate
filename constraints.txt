@@ -22,14 +22,14 @@ pillow==11.3.0
 opencv-contrib-python-headless==4.11.0.86
 onnxruntime-gpu==1.22.0
 
-# --- HuggingFace & Diffusion Ecosystem ---
-transformers==4.53.2
-tokenizers==0.21.2
-huggingface-hub==0.34.3
-accelerate==1.8.1
+# --- HuggingFace & Diffusion Ecosystem (exact OneTrainer dependencies) ---
+transformers==5.5.4
+tokenizers==0.22.2
+huggingface-hub==1.22.0
+accelerate==1.12.0
 safetensors==0.8.0
 peft==0.17.0
-sentencepiece==0.2.0
+sentencepiece==0.2.1
 open-clip-torch==2.32.0
 gguf==0.17.1
 
@@ -48,7 +48,7 @@ PySide6==6.8.2.1
 customtkinter==5.2.2
 tensorboard==2.19.0
 psutil==7.2.2
-requests==2.32.3
+requests==2.34.2
 deepdiff==8.2.0
 av==14.2.0
 scenedetect==0.6.5.2
