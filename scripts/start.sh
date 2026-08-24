@@ -24,6 +24,8 @@ mkdir -p "$WORKSPACE/models" \
          "$WORKSPACE/logs" \
          "$WORKSPACE/training_configs" \
          "$WORKSPACE/training_presets" \
+         "$WORKSPACE/training_concepts" \
+         "$WORKSPACE/training_samples" \
          "$WORKSPACE/embedding_templates" \
          "$WORKSPACE/.cache/huggingface"
 
@@ -32,13 +34,17 @@ mkdir -p /root/.cache
 ln -sfn "$WORKSPACE/.cache/huggingface" /root/.cache/huggingface
 
 # Populate initial templates and configs into workspace if not already present
-for dir in training_configs training_presets embedding_templates; do
+for dir in training_configs training_presets training_concepts training_samples embedding_templates; do
   if [ -d "/OneTrainer/$dir" ] && [ ! -L "/OneTrainer/$dir" ]; then
     cp -an "/OneTrainer/$dir/." "$WORKSPACE/$dir/" 2>/dev/null || true
     rm -rf "/OneTrainer/$dir"
   fi
   ln -sfn "$WORKSPACE/$dir" "/OneTrainer/$dir"
 done
+
+# Initialize empty default concept and sample JSON files if missing
+[ -f "$WORKSPACE/training_concepts/concepts.json" ] || echo "[]" > "$WORKSPACE/training_concepts/concepts.json"
+[ -f "$WORKSPACE/training_samples/samples.json" ] || echo "[]" > "$WORKSPACE/training_samples/samples.json"
 
 # Link models, datasets, output, and logs
 for dir in models output datasets logs; do
