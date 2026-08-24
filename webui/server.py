@@ -26,6 +26,8 @@ from modules.util import create
 from modules.util.callbacks.TrainCallbacks import TrainCallbacks
 from modules.util.commands.TrainCommands import TrainCommands
 from modules.util.config.TrainConfig import TrainConfig
+from modules.util.config.ConceptConfig import ConceptConfig
+from modules.util.config.SampleConfig import SampleConfig
 from modules.util.enum.ModelType import ModelType
 from modules.util.enum.TrainingMethod import TrainingMethod
 from modules.util.enum.Optimizer import Optimizer
@@ -39,7 +41,7 @@ try:
 except ImportError:
     snapshot_download = None
 
-app = FastAPI(title="OneTrainer WebUI", version="1.1.1")
+app = FastAPI(title="OneTrainer WebUI", version="1.1.2")
 
 app.add_middleware(
     CORSMiddleware,
@@ -67,7 +69,25 @@ POPULAR_DOWNLOAD_TARGETS = [
 def parse_train_config(data: Dict[str, Any]) -> TrainConfig:
     default_cfg = TrainConfig.default_values()
     is_built_in = "__version" not in data
-    return default_cfg.from_dict(data, migrate=not is_built_in).to_unpacked_config()
+    cfg = default_cfg.from_dict(data, migrate=not is_built_in)
+
+    # Reconstruct and preserve concepts list
+    concepts_raw = data.get("concepts")
+    if concepts_raw and isinstance(concepts_raw, list):
+        concepts_list = []
+        for c in concepts_raw:
+            if isinstance(c, dict):
+                c_obj = ConceptConfig.default_values()
+                c_obj.name = c.get("name", "Concept")
+                c_obj.path = c.get("path") or c.get("image_folder", "")
+                c_obj.balancing = float(c.get("balancing") or c.get("repeat", 1.0))
+                c_obj.enabled = True
+                concepts_list.append(c_obj)
+            elif isinstance(c, ConceptConfig):
+                concepts_list.append(c)
+        cfg.concepts = concepts_list
+
+    return cfg
 
 
 class DownloadManager:
@@ -222,7 +242,20 @@ async def get_status():
 
 @app.get("/api/config")
 async def get_current_config():
-    return state.config.to_pack_dict(secrets=True)
+    packed = state.config.to_pack_dict(secrets=True)
+    if state.config.concepts:
+        packed["concepts"] = [
+            {
+                "name": c.name,
+                "path": c.path,
+                "image_folder": c.path,
+                "repeat": c.balancing,
+                "resolution": state.config.resolution,
+                "caption_extension": ".txt"
+            }
+            for c in state.config.concepts
+        ]
+    return packed
 
 
 @app.post("/api/config")
@@ -294,11 +327,12 @@ async def auto_detect_datasets(payload: Dict[str, Any]):
                 mask_dir = os.path.join(folder, "masks") if os.path.isdir(os.path.join(folder, "masks")) else ""
                 detected_concepts.append({
                     "name": folder_name,
+                    "path": str(Path(folder).resolve()),
                     "image_folder": str(Path(folder).resolve()),
                     "image_count": len(images),
                     "caption_count": len(captions),
                     "repeat": 1,
-                    "resolution": "1024" if "1024" in folder_name or "flux" in folder_name.lower() or "sdxl" in folder_name.lower() else "512",
+                    "resolution": state.config.resolution or "512",
                     "caption_extension": ".txt",
                     "mask_folder": str(Path(mask_dir).resolve()) if mask_dir else "",
                 })
@@ -324,54 +358,6 @@ async def trigger_model_download(payload: Dict[str, Any]):
     download_mgr.start_download(repo, dest_dir, token)
     state.log(f"Started background download for {repo}")
     return {"status": "download_started", "dest": dest_dir}
-
-
-@app.post("/api/autotune_vram")
-async def autotune_vram(payload: Dict[str, Any]):
-    target_gb = payload.get("vram_gb", 16)
-    model_type = state.config.model_type
-    current = state.config.to_pack_dict(secrets=True)
-
-    if target_gb <= 12:
-        current["batch_size"] = 1
-        current["gradient_accumulation_steps"] = 4
-        current["gradient_checkpointing"] = True
-        current["compile"] = False
-        if "transformer" in current:
-            current["transformer"]["weight_dtype"] = "INT_W8A8"
-            current["transformer"]["offload_fraction"] = 0.5
-        if "text_encoder" in current:
-            current["text_encoder"]["weight_dtype"] = "FLOAT_8"
-        if "text_encoder_2" in current:
-            current["text_encoder_2"]["weight_dtype"] = "FLOAT_8"
-    elif target_gb <= 16:
-        current["batch_size"] = 2 if not model_type.is_flux() else 1
-        current["gradient_accumulation_steps"] = 2
-        current["gradient_checkpointing"] = True
-        current["compile"] = True
-        if "transformer" in current:
-            current["transformer"]["weight_dtype"] = "INT_W8A8"
-            current["transformer"]["offload_fraction"] = 0.3
-        if "text_encoder" in current:
-            current["text_encoder"]["weight_dtype"] = "FLOAT_8"
-        if "text_encoder_2" in current:
-            current["text_encoder_2"]["weight_dtype"] = "BFLOAT_16"
-    else: # 24GB+
-        current["batch_size"] = 4 if not model_type.is_flux() else 2
-        current["gradient_accumulation_steps"] = 1
-        current["gradient_checkpointing"] = True
-        current["compile"] = True
-        if "transformer" in current:
-            current["transformer"]["weight_dtype"] = "BFLOAT_16"
-            current["transformer"]["offload_fraction"] = 0.0
-        if "text_encoder" in current:
-            current["text_encoder"]["weight_dtype"] = "BFLOAT_16"
-        if "text_encoder_2" in current:
-            current["text_encoder_2"]["weight_dtype"] = "BFLOAT_16"
-
-    state.config = parse_train_config(current)
-    state.log(f"Auto-tuned hyperparameters for {target_gb}GB VRAM profile")
-    return {"status": "ok", "config": state.config.to_pack_dict(secrets=True)}
 
 
 @app.get("/api/presets")
@@ -515,6 +501,32 @@ def _training_worker():
     state.status = "Initializing..."
     state.reset_progress()
     state.log("Training run starting...")
+
+    # Ensure concept files & sample files exist on disk
+    concept_dir = os.path.dirname(state.config.concept_file_name) or "training_concepts"
+    os.makedirs(concept_dir, exist_ok=True)
+
+    if not state.config.concepts:
+        # Create a default concept pointing to datasets
+        workspace = Path(state.config.workspace_dir or "/workspace")
+        ds_path = str(workspace / "datasets") if os.path.exists(str(workspace / "datasets")) else "datasets"
+        fallback_concept = ConceptConfig.default_values()
+        fallback_concept.name = "default_concept"
+        fallback_concept.path = ds_path
+        fallback_concept.balancing = 1.0
+        fallback_concept.enabled = True
+        state.config.concepts = [fallback_concept]
+
+    # Write concepts.json
+    with open(state.config.concept_file_name, "w", encoding="utf-8") as f:
+        json.dump([c.to_dict() for c in state.config.concepts], f, indent=4)
+
+    # Ensure samples directory exists
+    sample_dir = os.path.dirname(state.config.sample_definition_file_name) or "training_samples"
+    os.makedirs(sample_dir, exist_ok=True)
+    if not os.path.exists(state.config.sample_definition_file_name):
+        with open(state.config.sample_definition_file_name, "w", encoding="utf-8") as f:
+            json.dump([], f)
 
     state.training_callbacks = TrainCallbacks(
         on_update_train_progress=_on_update_train_progress,
