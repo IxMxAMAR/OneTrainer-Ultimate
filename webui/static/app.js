@@ -618,6 +618,48 @@ document.getElementById('presetSelect').addEventListener('change', (e) => {
   loadPresetFile(cat, file);
 });
 
+// 1-Click Export / Download Config JSON to Computer
+document.getElementById('btnExportConfig').addEventListener('click', () => {
+  syncFormToConfig();
+  const configJson = JSON.stringify(currentConfig, null, 2);
+
+  // Trigger browser download
+  const blob = new Blob([configJson], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const archName = (currentConfig.model_type || 'training').toLowerCase();
+  a.href = url;
+  a.download = `${archName}_config.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  // Also display modal with Copy button
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalBody = document.getElementById('modalBody');
+
+  modalTitle.textContent = '📥 Training Config JSON';
+  modalBody.innerHTML = `
+    <div style="margin-bottom: 10px; font-size: 13px; color: #10b981;">
+      ✅ Config downloaded to your computer as <code>${archName}_config.json</code>!
+    </div>
+    <div class="form-group">
+      <textarea id="exportJsonText" rows="14" style="font-family: monospace; font-size: 11px; background: #0b0d14;" readonly>${configJson}</textarea>
+    </div>
+    <button class="btn btn-primary" onclick="copyExportedJson()">📋 Copy to Clipboard</button>
+  `;
+  modalOverlay.classList.remove('hidden');
+});
+
+window.copyExportedJson = function() {
+  const textarea = document.getElementById('exportJsonText');
+  textarea.select();
+  navigator.clipboard.writeText(textarea.value);
+  alert('Copied training config JSON to clipboard!');
+};
+
 // Interactive File / Folder Browser Modal
 window.openFileBrowser = async function(targetInputId, startPath = null) {
   currentBrowseTargetInput = targetInputId;

@@ -45,6 +45,7 @@
       <select id="presetSelect" class="select-preset">
         <option value="" disabled selected>⚡ All Architecture Presets (60+)...</option>
       </select>
+      <button id="btnExportConfig" class="btn btn-secondary" title="Download Config JSON to Browser">📥 Export JSON</button>
       <button id="btnModelHub" class="btn btn-secondary">📥 Model Hub</button>
       <button id="btnSaveConfig" class="btn btn-secondary">💾 Save Config</button>
       <button id="btnLoadConfig" class="btn btn-secondary">📂 Load Config</button>
@@ -262,7 +263,7 @@
           <div class="form-row">
             <div class="form-group flex-1">
               <label>Learning Rate</label>
-              <input type="number" step="0.00001" id="learning_rate" data-bind="learning_rate" placeholder="0.0003" />
+              <input type="number" step="0.00001" id="learning_rate" data-bind="learning_rate" placeholder="0.0001" />
             </div>
             <div class="form-group flex-1">
               <label>LR Scheduler</label>
@@ -282,7 +283,7 @@
           <div class="form-row">
             <div class="form-group flex-1">
               <label>Epochs</label>
-              <input type="number" id="epochs" data-bind="epochs" placeholder="10" />
+              <input type="number" id="epochs" data-bind="epochs" placeholder="15" />
             </div>
             <div class="form-group flex-1">
               <label>Max Steps (0 = by epochs)</label>
@@ -307,7 +308,7 @@
             </div>
             <div class="form-group flex-checkbox">
               <label class="switch-label">
-                <input type="checkbox" id="compile" data-bind="compile" checked />
+                <input type="checkbox" id="compile" data-bind="compile" />
                 <span>torch.compile & Triton acceleration</span>
               </label>
             </div>
