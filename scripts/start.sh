@@ -8,6 +8,12 @@ export PATH="/opt/venv/bin:$PATH"
 export HF_HOME="${HF_HOME:-/workspace/.cache/huggingface}"
 export HF_HUB_ENABLE_HF_TRANSFER="1"
 
+# --- 0. Ensure reliable DNS in container ---
+if [ -w /etc/resolv.conf ]; then
+  echo "nameserver 8.8.8.8" > /etc/resolv.conf 2>/dev/null || true
+  echo "nameserver 1.1.1.1" >> /etc/resolv.conf 2>/dev/null || true
+fi
+
 WORKSPACE="${WORKSPACE:-/workspace}"
 echo "[start] Initializing workspace persistence at $WORKSPACE"
 
@@ -84,7 +90,8 @@ nohup tensorboard --logdir="$WORKSPACE/logs" --host=0.0.0.0 --port=6006 \
 echo "[start] TensorBoard running on :6006"
 
 # --- 5. Launch Native OneTrainer WebUI (Port 8080) ---
-RUNPOD_HTTP_PORT="${RUNPOD_HTTP_PORT:-8080}"
+RUNPOD_HTTP_PORT="${PORT:-8080}"
+export PORT="$RUNPOD_HTTP_PORT"
 echo "[start] Launching native OneTrainer WebUI on :$RUNPOD_HTTP_PORT..."
 cd /OneTrainer
 exec python webui/server.py
