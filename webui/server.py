@@ -69,6 +69,18 @@ POPULAR_DOWNLOAD_TARGETS = [
 ]
 
 
+# Ensure default concept and sample directories and files exist immediately
+os.makedirs("training_concepts", exist_ok=True)
+if not os.path.exists("training_concepts/concepts.json"):
+    with open("training_concepts/concepts.json", "w", encoding="utf-8") as f:
+        json.dump([], f)
+
+os.makedirs("training_samples", exist_ok=True)
+if not os.path.exists("training_samples/samples.json"):
+    with open("training_samples/samples.json", "w", encoding="utf-8") as f:
+        json.dump([], f)
+
+
 def parse_train_config(data: Dict[str, Any]) -> TrainConfig:
     default_cfg = TrainConfig.default_values()
     is_built_in = "__version" not in data
@@ -96,6 +108,11 @@ def parse_train_config(data: Dict[str, Any]) -> TrainConfig:
             elif isinstance(c, ConceptConfig):
                 concepts_list.append(c)
         cfg.concepts = concepts_list
+    elif cfg.concepts is None:
+        cfg.concepts = []
+
+    if cfg.samples is None:
+        cfg.samples = []
 
     return cfg
 
