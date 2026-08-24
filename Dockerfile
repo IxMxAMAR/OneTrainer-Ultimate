@@ -69,7 +69,7 @@ RUN pip install --no-cache-dir --no-deps \
 RUN uv pip install --no-cache \
       fastapi uvicorn websockets \
       numpy scipy matplotlib pillow \
-      transformers tokenizers huggingface-hub hf_transfer accelerate safetensors peft \
+      transformers tokenizers huggingface-hub hf_transfer accelerate safetensors \
       sentencepiece open-clip-torch gguf onnxruntime-gpu \
       bitsandbytes dadaptation lion-pytorch prodigyopt schedulefree \
       pytorch_optimizer prodigy-plus-schedule-free adv_optm \
