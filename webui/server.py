@@ -35,6 +35,7 @@ from modules.util.enum.ModelType import ModelType
 from modules.util.enum.TrainingMethod import TrainingMethod
 from modules.util.enum.Optimizer import Optimizer
 from modules.util.enum.DataType import DataType
+from modules.util.enum.TimeUnit import TimeUnit
 from modules.util.TrainProgress import TrainProgress
 from modules.util.torch_util import torch_gc
 import torch
