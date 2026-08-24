@@ -11,6 +11,9 @@ import traceback
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from PIL import ImageFile, Image
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -41,7 +44,7 @@ try:
 except ImportError:
     snapshot_download = None
 
-app = FastAPI(title="OneTrainer WebUI", version="1.1.3")
+app = FastAPI(title="OneTrainer WebUI", version="1.1.4")
 
 app.add_middleware(
     CORSMiddleware,
@@ -523,7 +526,6 @@ def _training_worker():
     os.makedirs(concept_dir, exist_ok=True)
 
     if not state.config.concepts:
-        # Create a default concept pointing to datasets
         workspace = Path(state.config.workspace_dir or "/workspace")
         ds_path = str(workspace / "datasets") if os.path.exists(str(workspace / "datasets")) else "datasets"
         fallback_concept = ConceptConfig.default_values()
