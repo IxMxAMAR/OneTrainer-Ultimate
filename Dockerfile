@@ -62,7 +62,7 @@ RUN pip install --no-cache-dir --no-deps \
 
 # ---- 5. Pre-bake Core ML Ecosystem, Web Framework & Optimizers ----
 RUN uv pip install --no-cache \
-      fastapi uvicorn websockets \
+      setuptools fastapi uvicorn websockets \
       numpy scipy matplotlib pillow opencv-contrib-python-headless \
       transformers tokenizers huggingface-hub hf_transfer accelerate safetensors \
       sentencepiece open-clip-torch gguf onnxruntime-gpu \
