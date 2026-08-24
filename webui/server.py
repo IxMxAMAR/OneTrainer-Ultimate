@@ -22,7 +22,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent.parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from modules.util import create
+from modules.util import create, huggingface_util
 from modules.util.callbacks.TrainCallbacks import TrainCallbacks
 from modules.util.commands.TrainCommands import TrainCommands
 from modules.util.config.TrainConfig import TrainConfig
@@ -41,7 +41,7 @@ try:
 except ImportError:
     snapshot_download = None
 
-app = FastAPI(title="OneTrainer WebUI", version="1.1.2")
+app = FastAPI(title="OneTrainer WebUI", version="1.1.3")
 
 app.add_middleware(
     CORSMiddleware,
@@ -55,7 +55,7 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 POPULAR_DOWNLOAD_TARGETS = [
-    {"id": "krea-2", "name": "Krea 2 Raw", "repo": "krea/Krea-2-Raw", "size": "14 GB", "type": "KREA_2"},
+    {"id": "krea-2", "name": "Krea 2 Raw", "repo": "krea/Krea-2-Raw", "size": "14 GB", "type": "KREA_2", "gated": True},
     {"id": "flux-dev", "name": "FLUX.1 [dev]", "repo": "black-forest-labs/FLUX.1-dev", "size": "23 GB", "type": "FLUX_DEV_1", "gated": True},
     {"id": "flux-schnell", "name": "FLUX.1 [schnell]", "repo": "black-forest-labs/FLUX.1-schnell", "size": "23 GB", "type": "FLUX_1_SCHNELL"},
     {"id": "sdxl-base", "name": "Stable Diffusion XL 1.0 Base", "repo": "stabilityai/stable-diffusion-xl-base-1.0", "size": "6.5 GB", "type": "STABLE_DIFFUSION_XL_10_BASE"},
@@ -109,11 +109,15 @@ class DownloadManager:
             try:
                 os.makedirs(dest_dir, exist_ok=True)
                 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
+                effective_token = token or state.config.secrets.huggingface_token or os.environ.get("HF_TOKEN")
+                if effective_token:
+                    os.environ["HF_TOKEN"] = effective_token
+                    os.environ["HUGGING_FACE_HUB_TOKEN"] = effective_token
                 if snapshot_download:
                     snapshot_download(
                         repo_id=repo_id,
                         local_dir=dest_dir,
-                        token=token or os.environ.get("HF_TOKEN"),
+                        token=effective_token,
                         resume_download=True,
                     )
                 self.active_downloads[repo_id]["status"] = "completed"
@@ -270,6 +274,9 @@ async def update_current_config(config_data: Dict[str, Any]):
                     d[k] = v
         update_deep(current_dict, config_data)
         state.config = parse_train_config(current_dict)
+        if state.config.secrets.huggingface_token:
+            os.environ["HF_TOKEN"] = state.config.secrets.huggingface_token
+            os.environ["HUGGING_FACE_HUB_TOKEN"] = state.config.secrets.huggingface_token
         return {"status": "ok", "config": state.config.to_pack_dict(secrets=True)}
     except Exception as e:
         traceback.print_exc()
@@ -349,7 +356,7 @@ async def list_model_presets():
 @app.post("/api/models/download")
 async def trigger_model_download(payload: Dict[str, Any]):
     repo = payload.get("repo_id")
-    token = payload.get("token") or state.config.secrets.huggingface_token
+    token = payload.get("token") or state.config.secrets.huggingface_token or os.environ.get("HF_TOKEN")
     if not repo:
         raise HTTPException(status_code=400, detail="Missing repo_id")
     workspace = Path(state.config.workspace_dir or "/workspace")
@@ -501,6 +508,15 @@ def _training_worker():
     state.status = "Initializing..."
     state.reset_progress()
     state.log("Training run starting...")
+
+    # Configure Hugging Face authentication from config
+    token = state.config.secrets.huggingface_token or os.environ.get("HF_TOKEN", "")
+    huggingface_util.configure_hub(
+        token=token,
+        offline_mode=state.config.offline_mode,
+        cache_dir=state.config.huggingface_cache_dir,
+        on_status=_on_update_status
+    )
 
     # Ensure concept files & sample files exist on disk
     concept_dir = os.path.dirname(state.config.concept_file_name) or "training_concepts"

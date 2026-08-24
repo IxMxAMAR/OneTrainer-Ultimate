@@ -254,7 +254,6 @@ document.getElementById('model_type').addEventListener('change', (e) => {
   const chosenArch = e.target.value;
   const meta = ARCHITECTURE_METADATA[chosenArch];
   if (meta) {
-    // If there is a preset for this architecture, load the first one (e.g. LoRA 16GB)
     const presetsForCat = allPresets[meta.category] || [];
     if (presetsForCat.length > 0) {
       loadPresetFile(presetsForCat[0].category, presetsForCat[0].filename);
@@ -374,7 +373,12 @@ async function fetchConfig() {
   try {
     const res = await fetch('/api/config');
     currentConfig = await res.json();
+    if (!currentConfig.base_model_name && currentConfig.model_type) {
+      const meta = ARCHITECTURE_METADATA[currentConfig.model_type] || {};
+      currentConfig.base_model_name = meta.base_model || '';
+    }
     populateForm(currentConfig);
+    document.getElementById('base_model_name').value = currentConfig.base_model_name || '';
     if (currentConfig.model_type) {
       updateArchitectureUI(currentConfig.model_type);
     }
@@ -440,6 +444,7 @@ function renderConcepts(concepts) {
   concepts.forEach((c, idx) => {
     const card = document.createElement('div');
     card.className = 'concept-card';
+    const cPath = c.path || c.image_folder || '';
     card.innerHTML = `
       <div class="concept-card-top">
         <div style="display: flex; align-items: center; gap: 8px;">
@@ -451,18 +456,18 @@ function renderConcepts(concepts) {
       <div class="form-group">
         <label>Image Directory</label>
         <div class="input-with-btn">
-          <input type="text" id="concept_img_${idx}" value="${c.image_folder || ''}" onchange="updateConcept(${idx}, 'image_folder', this.value)" placeholder="/workspace/datasets/my_concept" />
+          <input type="text" id="concept_img_${idx}" value="${cPath}" onchange="updateConcept(${idx}, 'path', this.value)" placeholder="/workspace/datasets/my_concept" />
           <button class="btn btn-secondary btn-browse" onclick="openFileBrowser('concept_img_${idx}')">📁</button>
         </div>
       </div>
       <div class="form-row">
         <div class="form-group flex-1">
           <label>Repeats</label>
-          <input type="number" value="${c.repeat || 1}" onchange="updateConcept(${idx}, 'repeat', Number(this.value))" />
+          <input type="number" value="${c.balancing || c.repeat || 1}" onchange="updateConcept(${idx}, 'balancing', Number(this.value))" />
         </div>
         <div class="form-group flex-1">
           <label>Resolution</label>
-          <input type="text" value="${c.resolution || '1024'}" onchange="updateConcept(${idx}, 'resolution', this.value)" />
+          <input type="text" value="${c.resolution || '512'}" onchange="updateConcept(${idx}, 'resolution', this.value)" />
         </div>
       </div>
       <div class="form-row">
@@ -493,6 +498,7 @@ window.removeConcept = function(idx) {
 window.updateConcept = function(idx, field, val) {
   if (currentConfig.concepts && currentConfig.concepts[idx]) {
     currentConfig.concepts[idx][field] = val;
+    if (field === 'path') currentConfig.concepts[idx]['image_folder'] = val;
   }
 };
 
@@ -500,9 +506,11 @@ document.getElementById('btnAddConcept').addEventListener('click', () => {
   if (!currentConfig.concepts) currentConfig.concepts = [];
   currentConfig.concepts.push({
     name: `Concept_${currentConfig.concepts.length + 1}`,
+    path: '/workspace/datasets',
     image_folder: '/workspace/datasets',
+    balancing: 1.0,
     repeat: 1,
-    resolution: '1024',
+    resolution: '512',
     caption_extension: '.txt',
     mask_folder: ''
   });
@@ -538,19 +546,24 @@ window.loadPresetFile = async function(cat, file) {
     if (data.status === 'ok') {
       currentConfig = data.config;
 
-      // Smart Defaults & UI State sync
       const modelType = currentConfig.model_type;
       const meta = ARCHITECTURE_METADATA[modelType] || {};
 
+      if (!currentConfig.base_model_name && meta.base_model) {
+        currentConfig.base_model_name = meta.base_model;
+      }
+
       // Populate forms
       populateForm(currentConfig);
+
+      // Explicitly set base model input value
+      document.getElementById('base_model_name').value = currentConfig.base_model_name || meta.base_model || '';
 
       // Auto-name output destination if generic
       if (!currentConfig.output_model_destination || currentConfig.output_model_destination.startsWith('models/')) {
         const safeCat = cat.toLowerCase().replace(/\s+/g, '_');
         const safeName = file.replace(/#/g, '').replace(/\.json/g, '').toLowerCase().replace(/\s+/g, '_');
-        const ext = currentConfig.output_model_format === 'KOHYA_LORA' || currentConfig.output_model_format === 'DIFFUSERS_LORA' || currentConfig.output_model_format === 'COMFY_LORA' ? 'safetensors' : 'safetensors';
-        const targetDest = `output/${safeCat}_${safeName}.${ext}`;
+        const targetDest = `output/${safeCat}_${safeName}.safetensors`;
         document.getElementById('output_model_destination').value = targetDest;
         setNestedValue(currentConfig, 'output_model_destination', targetDest);
       }
@@ -568,7 +581,7 @@ window.loadPresetFile = async function(cat, file) {
         btn.classList.toggle('active', btn.textContent.includes(file.replace(/#/g, '').replace(/\.json/g, '')));
       });
 
-      alert(`✅ Loaded authentic OneTrainer preset: ${cat} (${file})\nTraining Method: ${currentConfig.training_method}\nLearning Rate: ${currentConfig.learning_rate}\nBatch Size: ${currentConfig.batch_size}`);
+      alert(`✅ Loaded authentic OneTrainer preset: ${cat} (${file})\nBase Model: ${currentConfig.base_model_name}\nTraining Method: ${currentConfig.training_method}\nLearning Rate: ${currentConfig.learning_rate}`);
     }
   } catch (err) {
     alert(`Failed to load preset: ${err}`);
